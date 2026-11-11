@@ -1,0 +1,50 @@
+[package]
+name = "gpui-m3"
+version = "0.2.0"
+edition = "2024"
+rust-version = "1.88"
+description = "Material 3 Expressive components for GPUI: shape morphing, spring motion and dynamic color"
+authors = ["chrx3"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/chrx3/gpui-m3"
+readme = "README.md"
+documentation = "https://docs.rs/gpui-m3"
+keywords = ["gpui", "material-design", "ui", "components", "gui"]
+categories = ["gui"]
+exclude = ["/docs", "/changelog/*/", "/.github", "/.cargo"]
+
+[dependencies]
+gpui = "0.2.2"
+# The crate GPUI decodes images with; used to build shaped photo rasters.
+image = { version = "0.25", default-features = false, features = ["png"] }
+log = "0.4"
+material-colors = "0.4"
+pulldown-cmark = { version = "0.13", default-features = false }
+# Only with the `mermaid` feature: diagrams as SVG (no browser), rasterized with the resvg that
+# GPUI already uses (same 0.45, so there is a single copy).
+mermaid-rs-renderer = { version = "0.3", default-features = false, optional = true }
+resvg = { version = "0.45", default-features = false, features = ["text", "system-fonts"], optional = true }
+usvg = { version = "0.45", default-features = false, features = ["text"], optional = true }
+similar = { version = "2", default-features = false, features = ["text"] }
+syntect = { version = "5", default-features = false, features = ["default-syntaxes", "regex-fancy", "yaml-load"] }
+unicode-segmentation = "1"
+
+# gpui 0.2.2 reaches `xattr` 0.2.3 (through gpui_http_client -> zed-async-tar), which uses
+# `libc::ENOATTR`; libc 0.2.190 removed it on Linux. Until gpui moves on, keep libc below it.
+[target.'cfg(target_os = "linux")'.dependencies]
+libc = ">=0.2.150, <0.2.190"
+
+[features]
+# Counts which call sites keep requesting animation frames, for `motion::take_frame_requests`.
+# Off by default: it takes a lock on every frame request.
+frame-stats = []
+# Draws ```mermaid blocks of `Markdown` as diagrams (flowchart, sequence, class, state, ER, pie…)
+# with a pure-Rust renderer; a block that cannot be read stays a code block.
+mermaid = ["dep:mermaid-rs-renderer", "dep:resvg", "dep:usvg"]
+
+# Read the gallery's "What's new" section from changelog/changelog.json (already in GPUI's tree).
+[dev-dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+

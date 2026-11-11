@@ -1,0 +1,58 @@
+//! Material 3 Expressive components for GPUI.
+//!
+//! ```ignore
+//! Application::new().with_assets(gpui_m3::Assets).run(|cx| {
+//!     gpui_m3::init(cx);
+//!     // ...
+//! });
+//! ```
+
+mod assets;
+mod cache;
+pub mod components;
+pub mod interaction;
+pub mod motion;
+pub mod shapes;
+pub mod syntax;
+pub mod theme;
+
+use std::borrow::Cow;
+
+use gpui::App;
+
+pub use assets::{Assets, ICON_PREFIX};
+pub use components::*;
+pub use motion::{MotionSettings, Spring};
+pub use shapes::{Morph, ShapeName, Tone};
+pub use syntax::{SyntaxHighlighter, SyntaxLines, SyntaxPalette, TokenKind};
+pub use theme::{Elevation, Scheme, SchemeVariant, Theme, corner};
+
+/// Registers the typeface, the base (light) theme and the motion settings.
+pub fn init(cx: &mut App) {
+    let fonts: Vec<Cow<'static, [u8]>> = vec![
+        // Inter as static files: DirectWrite does not match the variable one (with an `opsz`
+        // axis) by family name and falls back to Segoe UI.
+        Cow::Borrowed(include_bytes!("../assets/fonts/Inter-Regular.ttf")),
+        Cow::Borrowed(include_bytes!("../assets/fonts/Inter-Medium.ttf")),
+        Cow::Borrowed(include_bytes!("../assets/fonts/Inter-SemiBold.ttf")),
+        Cow::Borrowed(include_bytes!("../assets/fonts/Inter-Bold.ttf")),
+        Cow::Borrowed(include_bytes!("../assets/fonts/Inter-Italic.ttf")),
+        Cow::Borrowed(include_bytes!("../assets/fonts/Roboto.ttf")),
+    ];
+    if let Err(err) = cx.text_system().add_fonts(fonts) {
+        log::warn!("gpui_m3: could not load Inter and Roboto: {err}");
+    }
+    if !cx.has_global::<Theme>() {
+        cx.set_global(Theme::new(false, None));
+    }
+    components::bind_text_field_keys(cx);
+    components::bind_text_area_keys(cx);
+    components::bind_code_editor_keys(cx);
+    components::bind_image_cropper_keys(cx);
+    components::bind_command_palette_keys(cx);
+    // After the text inputs, so open suggestion lists take the arrows, Enter, Tab and Escape.
+    components::bind_suggestion_keys(cx);
+    if !cx.has_global::<MotionSettings>() {
+        cx.set_global(MotionSettings::default());
+    }
+}
