@@ -1,7 +1,10 @@
 pub mod desktop_parser;
 pub mod icon_resolver;
+pub mod updates;
+pub mod store;
+pub mod backup;
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::Path;
 use std::process::Command;
@@ -13,6 +16,7 @@ use icon_resolver::resolve_app_icon;
 pub fn scan_all_apps() -> Vec<InstalledApp> {
     let mut apps = Vec::new();
     let mut seen_keys: HashSet<String> = HashSet::new();
+    let pacman_meta = load_pacman_metadata();
 
     // 1. InstallXS Managed Apps (Highest priority: exact records)
     let managed_db = db::load_database();
@@ -39,7 +43,7 @@ pub fn scan_all_apps() -> Vec<InstalledApp> {
     scan_user_local_desktop_apps(&mut apps, &mut seen_keys);
 
     // 4. Arch Linux Native Packages (Pacman & AUR)
-    scan_arch_packages(&mut apps, &mut seen_keys);
+    scan_arch_packages(&mut apps, &mut seen_keys, &pacman_meta);
 
     // Sort alphabetically by name
     apps.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
@@ -147,7 +151,11 @@ fn scan_user_local_desktop_apps(apps: &mut Vec<InstalledApp>, seen_keys: &mut Ha
     }
 }
 
-fn scan_arch_packages(apps: &mut Vec<InstalledApp>, seen_keys: &mut HashSet<String>) {
+fn scan_arch_packages(
+    apps: &mut Vec<InstalledApp>,
+    seen_keys: &mut HashSet<String>,
+    pacman_meta: &HashMap<String, (String, u64)>,
+) {
     // Explicit pacman packages
     let explicit_pkgs: HashSet<String> = Command::new("pacman")
         .arg("-Qqe")
@@ -216,6 +224,12 @@ fn scan_arch_packages(apps: &mut Vec<InstalledApp>, seen_keys: &mut HashSet<Stri
                 is_aur = true;
             }
 
+            let (version, installed_size) = pacman_meta
+                .get(&matched_pkg)
+                .or_else(|| pacman_meta.get(file_stem))
+                .map(|(v, s)| (Some(v.clone()), Some(*s)))
+                .unwrap_or((None, None));
+
             seen_keys.insert(norm_name);
             seen_keys.insert(file_stem.to_string());
 
@@ -224,7 +238,7 @@ fn scan_arch_packages(apps: &mut Vec<InstalledApp>, seen_keys: &mut HashSet<Stri
             apps.push(InstalledApp {
                 id: format!("arch:{}", file_stem),
                 name: desktop.name,
-                version: None,
+                version,
                 comment: desktop.comment,
                 source: if is_aur {
                     AppSource::Aur
@@ -237,11 +251,52 @@ fn scan_arch_packages(apps: &mut Vec<InstalledApp>, seen_keys: &mut HashSet<Stri
                 icon: resolved_icon,
                 desktop_file: Some(path),
                 install_date: None,
-                installed_size: None,
+                installed_size,
                 is_managed_by_installxs: false,
                 install_path: None,
                 installed_files: Vec::new(),
             });
         }
+    }
+}
+
+fn load_pacman_metadata() -> HashMap<String, (String, u64)> {
+    let mut map = HashMap::new();
+    if let Ok(output) = Command::new("pacman").arg("-Qi").output() {
+        if output.status.success() {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let mut current_name = String::new();
+            let mut current_version = String::new();
+
+            for line in stdout.lines() {
+                if let Some(rest) = line.strip_prefix("Name            : ") {
+                    current_name = rest.trim().to_string();
+                    current_version.clear();
+                } else if let Some(rest) = line.strip_prefix("Version         : ") {
+                    current_version = rest.trim().to_string();
+                } else if let Some(rest) = line.strip_prefix("Installed Size  : ") {
+                    let size = parse_pacman_size(rest.trim());
+                    if !current_name.is_empty() {
+                        map.insert(current_name.clone(), (current_version.clone(), size));
+                    }
+                }
+            }
+        }
+    }
+    map
+}
+
+fn parse_pacman_size(s: &str) -> u64 {
+    let parts: Vec<&str> = s.split_whitespace().collect();
+    if parts.len() < 2 {
+        return 0;
+    }
+    let num: f64 = parts[0].parse().unwrap_or(0.0);
+    match parts[1].to_lowercase().as_str() {
+        "b" | "bytes" => num as u64,
+        "kib" | "kb" => (num * 1024.0) as u64,
+        "mib" | "mb" => (num * 1024.0 * 1024.0) as u64,
+        "gib" | "gb" => (num * 1024.0 * 1024.0 * 1024.0) as u64,
+        _ => num as u64,
     }
 }
