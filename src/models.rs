@@ -83,3 +83,57 @@ pub enum InstallState {
     Success { app_name: String, message: String },
     Error(String),
 }
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ResidualTarget {
+    pub path: PathBuf,
+    pub label: String,
+    pub size_bytes: u64,
+    pub is_cache: bool,
+    pub is_config: bool,
+    pub selected: bool,
+}
+
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AppResiduals {
+    pub targets: Vec<ResidualTarget>,
+    pub total_bytes: u64,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AvailableUpdate {
+    pub package_name: String,
+    pub current_version: String,
+    pub new_version: String,
+    pub source: AppSource,
+    pub repository: Option<String>,
+    pub download_size: Option<u64>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum StoreSource {
+    Flathub,
+    Aur,
+    AppImageHub,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct StorePackage {
+    pub id: String,
+    pub name: String,
+    pub summary: String,
+    pub icon_url: Option<String>,
+    pub version: Option<String>,
+    pub source: StoreSource,
+    pub install_cmd: String,
+    pub is_installed: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BackupBundle {
+    pub export_date: DateTime<Utc>,
+    pub arch_packages: Vec<String>,
+    pub aur_packages: Vec<String>,
+    pub flatpaks: Vec<String>,
+    pub managed_apps: Vec<InstalledApp>,
+}
