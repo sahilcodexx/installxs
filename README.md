@@ -22,27 +22,32 @@ On Arch Linux, software is spread across many formats and locations:
    - Automatically detects format, extracts content, and integrates it.
    - Generates FreeDesktop `.desktop` application launchers with icons.
    - Symlinks executables to `~/.local/bin/` so you can launch them from terminal.
-3. **1-Click Clean Uninstall**: Records an exact file manifest for every managed app. Uninstalling completely removes the binary, all extracted files, desktop launcher, and symlinks without leaving orphan files behind.
-4. **Native System Icons & Deduplication**: Resolves real system icons from `/usr/share/pixmaps` and FreeDesktop icon themes, and deduplicates local/system apps.
-5. **Modern Material Design 3 Expressive UI**: Powered by Zed's GPU-accelerated **GPUI** and Google's Material 3 design tokens, with live search and Dark/Light theme switching.
+3. **Deep AppCleaner (CleanMyMac style)**: Scans for and selectively purges leftover residual files in `~/.config`, `~/.cache`, `~/.local/share`, `~/.local/state`, and Flatpak `~/.var/app` sandbox folders with exact byte calculation and interactive checklists.
+4. **1-Click System & Package Updates**: Live updater querying Pacman/Arch (`checkupdates`), Flatpak remotes, and AUR (`yay`), featuring per-package updating and "Update All".
+5. **Discover / App Store**: Search millions of packages from AUR and Flathub with instant 1-click installation.
+6. **Storage & Disk Usage Inspector**: Query and inspect exact on-disk installed sizes across Pacman, Flatpaks, AppImages, and local apps, with "Sort by: Disk Size".
+7. **Machine Migration & Manifest Backup**: Export full machine application portfolios into `~/installxs-backup.json` along with an auto-generated, executable bash restore script (`~/installxs-restore.sh`).
+8. **Native FreeDesktop & MIME Integration**: Registered handler for `.AppImage`, `.tar.gz`, `.deb`, and `.zip` archives.
+9. **Modern Material Design 3 Expressive UI**: Powered by Zed's GPU-accelerated **GPUI** and Google's Material 3 design tokens, with live search and Dark/Light theme switching.
 
 ---
 
 ## 🛠️ Quick Start
 
-### Run with Cargo:
+### Run GUI:
 ```bash
 cargo run
-```
-
-### Or run directly from terminal:
-```bash
+# or
 installxs
 ```
 
-### Install a package via CLI:
+### CLI & Headless Usage:
 ```bash
-installxs ~/Downloads/my-app.AppImage
+installxs --help          # Show command options
+installxs --list          # List all installed apps and sources
+installxs --updates       # Check system package updates
+installxs --backup        # Export machine backup bundle & restore script
+installxs ./my-app.AppImage # Inspect and install directly
 ```
 
 ---
