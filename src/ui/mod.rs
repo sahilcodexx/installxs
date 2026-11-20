@@ -1,13 +1,13 @@
+use gpui::{
+    div, img, prelude::*, px, rgb, Context, Entity, ExternalPaths, FontWeight, Hsla, IntoElement,
+    ParentElement, Render, Styled, Window,
+};
+use gpui_m3::motion::{self, Spring};
+use gpui_m3::theme::alpha;
+use gpui_m3::{Button, ButtonSize, Icon, IconButton, NavItem, Scheme, TextField, TextFieldEvent, Theme};
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use gpui::{
-    div, img, prelude::*, px, rgb, Context, Entity, ExternalPaths, FontWeight,
-    IntoElement, ParentElement, Render, Styled, Window,
-};
-use gpui_m3::{
-    Button, Chip, IconButton, Scheme, TextField, TextFieldEvent, Theme,
-};
 
 use crate::catalog::{self, backup, store, updates};
 use crate::installer::{self, detect_candidate, uninstaller};
@@ -32,16 +32,6 @@ pub enum NavTab {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FilterChip {
-    All,
-    Pacman,
-    Aur,
-    AppImage,
-    Flatpak,
-    Local,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortMode {
     Name,
     Source,
@@ -52,6 +42,74 @@ pub enum SortMode {
 pub enum ViewMode {
     Grid,
     List,
+}
+
+pub fn desktop_scheme(dark: bool) -> Scheme {
+    let mut s = if dark {
+        Scheme::baseline_dark()
+    } else {
+        Scheme::baseline_light()
+    };
+    let c = |hex| rgb(hex).into();
+
+    s.primary = c(if dark { 0x65a7f5 } else { 0x2677c9 });
+    s.on_primary = c(0xffffff);
+    s.primary_container = c(if dark { 0x263d57 } else { 0xd6e9ff });
+    s.on_primary_container = c(if dark { 0xdcecff } else { 0x173a5e });
+    s.secondary = c(if dark { 0xbac7d5 } else { 0x536273 });
+    s.on_secondary = c(0xffffff);
+    s.secondary_container = c(if dark { 0x2d3742 } else { 0xe2e9f0 });
+    s.on_secondary_container = c(if dark { 0xe0e8f0 } else { 0x26323d });
+    s.tertiary = c(if dark { 0x9cb9d6 } else { 0x506b86 });
+    s.on_tertiary = c(0xffffff);
+    s.tertiary_container = c(if dark { 0x2b3d50 } else { 0xe0ebf7 });
+    s.on_tertiary_container = c(if dark { 0xe1edf9 } else { 0x24394d });
+    s.surface = c(if dark { 0x191c20 } else { 0xf7f8fa });
+    s.surface_dim = c(if dark { 0x14171a } else { 0xe7e9ec });
+    s.surface_bright = c(if dark { 0x2d3238 } else { 0xffffff });
+    s.surface_container_lowest = c(if dark { 0x111417 } else { 0xffffff });
+    s.surface_container_low = c(if dark { 0x1d2126 } else { 0xf1f3f5 });
+    s.surface_container = c(if dark { 0x23282e } else { 0xecedef });
+    s.surface_container_high = c(if dark { 0x2a3036 } else { 0xe4e7ea });
+    s.surface_container_highest = c(if dark { 0x333a41 } else { 0xdce0e4 });
+    s.on_surface = c(if dark { 0xf0f3f6 } else { 0x202326 });
+    s.on_surface_variant = c(if dark { 0xaeb7c0 } else { 0x555b61 });
+    s.outline = c(if dark { 0x747f89 } else { 0x727980 });
+    s.outline_variant = c(if dark { 0x343b43 } else { 0xd5d9dd });
+    s.inverse_surface = c(if dark { 0xe8ebf2 } else { 0x303336 });
+    s.inverse_on_surface = c(if dark { 0x1a1e28 } else { 0xf2f3f4 });
+    s.inverse_primary = c(if dark { 0x3b49b8 } else { 0x9fcaff });
+    s.scrim = c(0x000000);
+    if dark {
+        // BoardUI dark: neutral grays (no color tint), blue accent ramp,
+        // content sits on the darkest ground with cards one step up.
+        s.primary = c(0x2b7fff);
+        s.primary_container = c(0x1e2f52);
+        s.on_primary_container = c(0xc9d8ff);
+        s.secondary_container = c(0x2b2b31);
+        s.on_secondary_container = c(0xd6d6dd);
+        s.tertiary_container = c(0x2b2f3a);
+        s.on_tertiary_container = c(0xd8dee9);
+        s.surface = c(0x16161a);
+        s.surface_dim = c(0x101014);
+        s.surface_bright = c(0x232329);
+        s.surface_container_lowest = c(0x1b1b20);
+        s.surface_container_low = c(0x212127);
+        s.surface_container = c(0x28282e);
+        s.surface_container_high = c(0x303037);
+        s.surface_container_highest = c(0x3a3a42);
+        s.on_surface = c(0xf5f5f7);
+        s.on_surface_variant = c(0xa1a1aa);
+        s.outline = c(0x4c4c56);
+        s.outline_variant = c(0x2e2e36);
+    }
+    s.error = c(if dark { 0xffb4ab } else { 0xba1a1a });
+    s.on_error = c(if dark { 0x690005 } else { 0xffffff });
+    s.error_container = c(if dark { 0x93000a } else { 0xffdad6 });
+    s.on_error_container = c(if dark { 0xffdad6 } else { 0x410002 });
+    s.success = c(if dark { 0x8ed49b } else { 0x246b35 });
+    s.warning = c(if dark { 0xf2c66d } else { 0x805500 });
+    s
 }
 
 pub fn format_file_size(bytes: u64) -> String {
@@ -75,7 +133,6 @@ pub fn format_file_size(bytes: u64) -> String {
 
 pub struct AppView {
     pub active_tab: NavTab,
-    pub active_filter: FilterChip,
     pub sort_mode: SortMode,
     pub view_mode: ViewMode,
     pub search_field: Entity<TextField>,
@@ -126,20 +183,23 @@ impl AppView {
 
         cx.subscribe(
             &search_field,
-            |this: &mut Self, _, event: &TextFieldEvent, cx| {
-                if let TextFieldEvent::Changed(text) = event {
+            |this: &mut Self, _, event: &TextFieldEvent, cx| match event {
+                TextFieldEvent::Changed(text) => {
                     this.search_query = text.to_string();
                     cx.notify();
                 }
+                TextFieldEvent::Submitted(text) if this.active_tab == NavTab::Discover => {
+                    this.search_store_packages(text.as_ref(), cx);
+                }
+                _ => {}
             },
         )
         .detach();
 
         let mut view = Self {
             active_tab: initial_tab,
-            active_filter: FilterChip::All,
             sort_mode: SortMode::Name,
-            view_mode: ViewMode::Grid,
+            view_mode: ViewMode::List,
             search_field,
             search_query: String::new(),
             apps: Vec::new(),
@@ -188,7 +248,10 @@ impl AppView {
         cx.notify();
         match updates::run_package_update(&update) {
             Ok(_) => {
-                self.toast = Some((format!("Updated '{}' to {}", name, update.new_version), false));
+                self.toast = Some((
+                    format!("Updated '{}' to {}", name, update.new_version),
+                    false,
+                ));
                 self.available_updates.retain(|u| u.package_name != name);
             }
             Err(err) => {
@@ -286,7 +349,11 @@ impl AppView {
             match uninstaller::uninstall_with_residuals(&app, &targets_to_purge) {
                 Ok(freed_bytes) => {
                     let msg = if freed_bytes > 0 {
-                        format!("Cleaned '{}' and purged {}", name, format_file_size(freed_bytes))
+                        format!(
+                            "Cleaned '{}' and purged {}",
+                            name,
+                            format_file_size(freed_bytes)
+                        )
                     } else {
                         format!("Removed '{}' successfully", name)
                     };
@@ -308,7 +375,9 @@ impl AppView {
             .set_title("Select Package to Install (.AppImage, .tar, .zip, .deb)")
             .add_filter(
                 "Linux App Packages",
-                &["AppImage", "tar.gz", "tgz", "tar.xz", "txz", "zip", "deb", "bin", "desktop"],
+                &[
+                    "AppImage", "tar.gz", "tgz", "tar.xz", "txz", "zip", "deb", "bin", "desktop",
+                ],
             )
             .pick_file();
 
@@ -379,7 +448,7 @@ impl AppView {
 
     pub fn toggle_theme(&mut self, cx: &mut Context<Self>) {
         self.dark_mode = !self.dark_mode;
-        cx.set_global(Theme::new(self.dark_mode, None));
+        Theme::set_scheme(desktop_scheme(self.dark_mode), self.dark_mode, cx);
         cx.notify();
     }
 
@@ -414,7 +483,8 @@ impl AppView {
 
     fn filtered_apps(&self) -> Vec<&InstalledApp> {
         let q = self.search_query.trim().to_lowercase();
-        let mut list: Vec<&InstalledApp> = self.apps
+        let mut list: Vec<&InstalledApp> = self
+            .apps
             .iter()
             .filter(|app| {
                 let matches_tab = match self.active_tab {
@@ -426,7 +496,10 @@ impl AppView {
                     NavTab::Aur => app.source == AppSource::Aur,
                     NavTab::AppImage => app.source == AppSource::AppImage,
                     NavTab::Flatpak => app.source == AppSource::Flatpak,
-                    NavTab::Local => matches!(app.source, AppSource::Manual | AppSource::Tarball | AppSource::Deb),
+                    NavTab::Local => matches!(
+                        app.source,
+                        AppSource::Manual | AppSource::Tarball | AppSource::Deb
+                    ),
                     NavTab::DropInstaller => true,
                     NavTab::Settings => false,
                 };
@@ -434,34 +507,30 @@ impl AppView {
                     return false;
                 }
 
-                if self.active_tab == NavTab::Applications {
-                    let matches_chip = match self.active_filter {
-                        FilterChip::All => true,
-                        FilterChip::Pacman => app.source == AppSource::Pacman,
-                        FilterChip::Aur => app.source == AppSource::Aur,
-                        FilterChip::AppImage => app.source == AppSource::AppImage,
-                        FilterChip::Flatpak => app.source == AppSource::Flatpak,
-                        FilterChip::Local => matches!(app.source, AppSource::Manual | AppSource::Tarball | AppSource::Deb),
-                    };
-                    if !matches_chip {
-                        return false;
-                    }
-                }
-
                 if q.is_empty() {
                     return true;
                 }
 
                 app.name.to_lowercase().contains(&q)
-                    || app.comment.as_ref().map(|c| c.to_lowercase().contains(&q)).unwrap_or(false)
+                    || app
+                        .comment
+                        .as_ref()
+                        .map(|c| c.to_lowercase().contains(&q))
+                        .unwrap_or(false)
                     || app.id.to_lowercase().contains(&q)
             })
             .collect();
 
         match self.sort_mode {
-            SortMode::Name => list.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase())),
+            SortMode::Name => {
+                list.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+            }
             SortMode::Source => list.sort_by(|a, b| a.source.label().cmp(b.source.label())),
-            SortMode::Size => list.sort_by(|a, b| b.installed_size.unwrap_or(0).cmp(&a.installed_size.unwrap_or(0))),
+            SortMode::Size => list.sort_by(|a, b| {
+                b.installed_size
+                    .unwrap_or(0)
+                    .cmp(&a.installed_size.unwrap_or(0))
+            }),
         }
 
         list
@@ -469,23 +538,67 @@ impl AppView {
 }
 
 impl Render for AppView {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let s = *Theme::of(cx);
 
-        let managed_count = self.apps.iter().filter(|a| a.is_managed_by_installxs).count();
-        let flatpak_count = self.apps.iter().filter(|a| a.source == AppSource::Flatpak).count();
-        let pacman_count = self.apps.iter().filter(|a| a.source == AppSource::Pacman).count();
-        let aur_count = self.apps.iter().filter(|a| a.source == AppSource::Aur).count();
-        let appimage_count = self.apps.iter().filter(|a| a.source == AppSource::AppImage).count();
-        let local_count = self.apps.iter().filter(|a| matches!(a.source, AppSource::Manual | AppSource::Tarball | AppSource::Deb)).count();
+        let managed_count = self
+            .apps
+            .iter()
+            .filter(|a| a.is_managed_by_installxs)
+            .count();
+        let flatpak_count = self
+            .apps
+            .iter()
+            .filter(|a| a.source == AppSource::Flatpak)
+            .count();
+        let pacman_count = self
+            .apps
+            .iter()
+            .filter(|a| a.source == AppSource::Pacman)
+            .count();
+        let aur_count = self
+            .apps
+            .iter()
+            .filter(|a| a.source == AppSource::Aur)
+            .count();
+        let appimage_count = self
+            .apps
+            .iter()
+            .filter(|a| a.source == AppSource::AppImage)
+            .count();
+        let local_count = self
+            .apps
+            .iter()
+            .filter(|a| {
+                matches!(
+                    a.source,
+                    AppSource::Manual | AppSource::Tarball | AppSource::Deb
+                )
+            })
+            .count();
         let total_count = self.apps.len();
         let updates_count = self.available_updates.len();
         let is_search_active = !self.search_query.is_empty();
 
+        let tab_id: &'static str = match self.active_tab {
+            NavTab::Applications => "tab_applications",
+            NavTab::Managed => "tab_managed",
+            NavTab::Updates => "tab_updates",
+            NavTab::Discover => "tab_discover",
+            NavTab::Pacman => "tab_pacman",
+            NavTab::Aur => "tab_aur",
+            NavTab::AppImage => "tab_appimage",
+            NavTab::Flatpak => "tab_flatpak",
+            NavTab::Local => "tab_local",
+            NavTab::DropInstaller => "tab_drop",
+            NavTab::Settings => "tab_settings",
+        };
+        let view_p = motion::entrance(tab_id, Spring::SPATIAL, 0., window, cx);
+
         div()
             .size_full()
-            .bg(rgb(0x131118))
-            .text_color(rgb(0xffffff))
+            .bg(s.surface_dim)
+            .text_color(s.on_surface)
             .font_family(gpui_m3::theme::FONT_FAMILY)
             .flex()
             .flex_row()
@@ -498,11 +611,14 @@ impl Render for AppView {
             // 1. Sidebar Navigation (Left Rail matching reference design)
             .child(
                 div()
-                    .w(px(234.))
+                    .w(px(248.))
                     .h_full()
-                    .bg(rgb(0x16131c))
-                    .border_r_1()
-                    .border_color(rgb(0x252030))
+                    .m_3()
+                    .rounded(px(20.))
+                    .bg(glass_bg(&s))
+                    .border_1()
+                    .border_color(s.outline_variant)
+                    .shadow(glass_shadow(&s))
                     .flex()
                     .flex_col()
                     .justify_between()
@@ -513,44 +629,42 @@ impl Render for AppView {
                             .flex()
                             .flex_col()
                             .gap_1()
-                            // macOS Traffic Light dots
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap_2()
-                                    .px_2()
-                                    .pt_1()
-                                    .pb_4()
-                                    .child(div().size(px(11.)).rounded_full().bg(rgb(0xed6a5e)))
-                                    .child(div().size(px(11.)).rounded_full().bg(rgb(0xf5bf4f)))
-                                    .child(div().size(px(11.)).rounded_full().bg(rgb(0x62c554))),
-                            )
-                            // Brand Header: Arch Logo + InstallXS
                             .child(
                                 div()
                                     .flex()
                                     .items_center()
                                     .gap_3()
                                     .px_2()
+                                    .pt_2()
                                     .pb_4()
                                     .child(
                                         div()
                                             .size(px(38.))
                                             .rounded(px(12.))
-                                            .bg(rgb(0x1e283d))
-                                            .border_1()
-                                            .border_color(rgb(0x324468))
+                                            .bg(s.primary_container)
                                             .flex()
                                             .items_center()
                                             .justify_center()
                                             .overflow_hidden()
                                             .child(
-                                                if Path::new("/usr/share/pixmaps/archlinux-logo.png").exists() {
-                                                    img(PathBuf::from("/usr/share/pixmaps/archlinux-logo.png")).size(px(24.)).into_any_element()
+                                                if Path::new(
+                                                    "/usr/share/pixmaps/archlinux-logo.png",
+                                                )
+                                                .exists()
+                                                {
+                                                    img(PathBuf::from(
+                                                        "/usr/share/pixmaps/archlinux-logo.png",
+                                                    ))
+                                                    .size(px(24.))
+                                                    .into_any_element()
                                                 } else {
-                                                    div().text_size(px(18.)).text_color(rgb(0x38bdf8)).font_weight(FontWeight::BOLD).child("A").into_any_element()
-                                                }
+                                                    div()
+                                                        .text_size(px(18.))
+                                                        .text_color(s.on_primary_container)
+                                                        .font_weight(FontWeight::BOLD)
+                                                        .child("A")
+                                                        .into_any_element()
+                                                },
                                             ),
                                     )
                                     .child(
@@ -561,24 +675,36 @@ impl Render for AppView {
                                                 div()
                                                     .font_weight(FontWeight::BOLD)
                                                     .text_size(px(15.5))
-                                                    .text_color(rgb(0xffffff))
+                                                    .text_color(s.on_surface)
                                                     .child("InstallXS"),
                                             )
                                             .child(
                                                 div()
                                                     .text_size(px(11.))
-                                                    .text_color(rgb(0x9a91a8))
-                                                    .child("Arch Universal Hub"),
+                                                    .text_color(s.on_surface_variant)
+                                                    .child("Application manager"),
                                             ),
                                     ),
+                            )
+                            // Library section label
+                            .child(
+                                div()
+                                    .px_3()
+                                    .pt_3()
+                                    .pb_1()
+                                    .text_size(px(11.))
+                                    .font_weight(FontWeight::BOLD)
+                                    .text_color(s.on_surface_variant)
+                                    .child("Library"),
                             )
                             // Main Nav: Applications (Lilac pill when active)
                             .child(self.render_nav_item(
                                 "nav_apps",
                                 "Applications",
-                                "⊞",
+                                "blocks",
                                 total_count,
                                 self.active_tab == NavTab::Applications,
+                                s,
                                 cx.listener(|this, _, _, cx| {
                                     this.active_tab = NavTab::Applications;
                                     cx.notify();
@@ -588,9 +714,10 @@ impl Render for AppView {
                             .child(self.render_nav_item(
                                 "nav_managed",
                                 "Managed",
-                                "✓",
+                                "check",
                                 managed_count,
                                 self.active_tab == NavTab::Managed,
+                                s,
                                 cx.listener(|this, _, _, cx| {
                                     this.active_tab = NavTab::Managed;
                                     cx.notify();
@@ -600,9 +727,10 @@ impl Render for AppView {
                             .child(self.render_nav_item(
                                 "nav_updates",
                                 "Updates",
-                                "↻",
+                                "refresh",
                                 updates_count,
                                 self.active_tab == NavTab::Updates,
+                                s,
                                 cx.listener(|this, _, _, cx| {
                                     this.active_tab = NavTab::Updates;
                                     cx.notify();
@@ -612,9 +740,10 @@ impl Render for AppView {
                             .child(self.render_nav_item(
                                 "nav_discover",
                                 "Discover",
-                                "🌐",
+                                "spark",
                                 self.store_packages.len(),
                                 self.active_tab == NavTab::Discover,
+                                s,
                                 cx.listener(|this, _, _, cx| {
                                     this.active_tab = NavTab::Discover;
                                     cx.notify();
@@ -628,16 +757,17 @@ impl Render for AppView {
                                     .pb_1()
                                     .text_size(px(11.))
                                     .font_weight(FontWeight::BOLD)
-                                    .text_color(rgb(0x7c758a))
+                                    .text_color(s.on_surface_variant)
                                     .child("Sources"),
                             )
                             // Sources: Pacman
                             .child(self.render_nav_item(
                                 "nav_pacman",
                                 "Pacman",
-                                "📦",
+                                "box",
                                 pacman_count,
                                 self.active_tab == NavTab::Pacman,
+                                s,
                                 cx.listener(|this, _, _, cx| {
                                     this.active_tab = NavTab::Pacman;
                                     cx.notify();
@@ -647,9 +777,10 @@ impl Render for AppView {
                             .child(self.render_nav_item(
                                 "nav_aur",
                                 "AUR",
-                                "A",
+                                "terminal",
                                 aur_count,
                                 self.active_tab == NavTab::Aur,
+                                s,
                                 cx.listener(|this, _, _, cx| {
                                     this.active_tab = NavTab::Aur;
                                     cx.notify();
@@ -659,9 +790,10 @@ impl Render for AppView {
                             .child(self.render_nav_item(
                                 "nav_appimage",
                                 "AppImage",
-                                "🚀",
+                                "bolt",
                                 appimage_count,
                                 self.active_tab == NavTab::AppImage,
+                                s,
                                 cx.listener(|this, _, _, cx| {
                                     this.active_tab = NavTab::AppImage;
                                     cx.notify();
@@ -671,9 +803,10 @@ impl Render for AppView {
                             .child(self.render_nav_item(
                                 "nav_flatpak",
                                 "Flatpak",
-                                "🧊",
+                                "layers",
                                 flatpak_count,
                                 self.active_tab == NavTab::Flatpak,
+                                s,
                                 cx.listener(|this, _, _, cx| {
                                     this.active_tab = NavTab::Flatpak;
                                     cx.notify();
@@ -683,73 +816,25 @@ impl Render for AppView {
                             .child(self.render_nav_item(
                                 "nav_local",
                                 "Local",
-                                "📁",
+                                "folder",
                                 local_count,
                                 self.active_tab == NavTab::Local,
+                                s,
                                 cx.listener(|this, _, _, cx| {
                                     this.active_tab = NavTab::Local;
                                     cx.notify();
                                 }),
                             )),
                     )
-                    // Bottom Section: Drop & Install + Settings
+                    // Settings
                     .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap_2()
-                            .pt_3()
-                            // Drop & Install CTA Pill Button
-                            .child(
-                                div()
-                                    .id("btn_sidebar_drop")
-                                    .w_full()
-                                    .py_2p5()
-                                    .px_4()
-                                    .rounded_full()
-                                    .bg(if self.active_tab == NavTab::DropInstaller { rgb(0xcfbcff) } else { rgb(0x2d243c) })
-                                    .border_1()
-                                    .border_color(if self.active_tab == NavTab::DropInstaller { rgb(0xcfbcff) } else { rgb(0x483a5e) })
-                                    .text_color(if self.active_tab == NavTab::DropInstaller { rgb(0x1e1035) } else { rgb(0xe8def8) })
-                                    .hover(|h| h.bg(rgb(0x372c49)))
-                                    .cursor_pointer()
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .gap_2()
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.active_tab = NavTab::DropInstaller;
-                                        cx.notify();
-                                    }))
-                                    .child(div().text_size(px(15.)).child("⤓"))
-                                    .child(
-                                        div()
-                                            .font_weight(FontWeight::BOLD)
-                                            .text_size(px(13.5))
-                                            .child("Drop & Install"),
-                                    ),
-                            )
-                            // Settings Button
-                            .child(
-                                div()
-                                    .id("btn_sidebar_settings")
-                                    .w_full()
-                                    .py_2()
-                                    .px_3p5()
-                                    .rounded_full()
-                                    .text_color(rgb(0xcac4d0))
-                                    .hover(|h| h.bg(rgb(0x231e2d)).text_color(rgb(0xffffff)))
-                                    .cursor_pointer()
-                                    .flex()
-                                    .items_center()
-                                    .gap_2p5()
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.active_tab = NavTab::Settings;
-                                        cx.notify();
-                                    }))
-                                    .child(div().text_size(px(15.)).child("⚙"))
-                                    .child(div().text_size(px(13.5)).font_weight(FontWeight::MEDIUM).child("Settings")),
-                            ),
+                        NavItem::new("btn_sidebar_settings", "Settings")
+                            .icon("gear")
+                            .selected(self.active_tab == NavTab::Settings)
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.active_tab = NavTab::Settings;
+                                cx.notify();
+                            })),
                     ),
             )
             // 2. Main Workspace (Header pinned, content scrolls smoothly)
@@ -762,175 +847,107 @@ impl Render for AppView {
                     .min_w_0()
                     .min_h_0()
                     .overflow_hidden()
-                    .bg(rgb(0x131118))
-                    // Top App Bar with Search & Action Controls
-                    .child(
-                        div()
-                            .flex_none()
-                            .h(px(64.))
-                            .px_8()
-                            .bg(rgb(0x131118))
-                            .flex()
-                            .items_center()
-                            .justify_between()
-                            .gap_4()
-                            // Centered Search Bar
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .max_w(px(520.))
-                                    .h(px(42.))
-                                    .bg(rgb(0x201c28))
-                                    .border_1()
-                                    .border_color(rgb(0x322a3d))
-                                    .rounded(px(21.))
-                                    .px_4()
-                                    .flex()
-                                    .items_center()
-                                    .gap_3()
-                                    .child(
-                                        div()
-                                            .text_color(rgb(0x9a91a8))
-                                            .text_size(px(15.))
-                                            .child("🔍"),
-                                    )
-                                    .child(
-                                        div()
-                                            .flex_1()
-                                            .min_w_0()
-                                            .child(self.search_field.clone()),
-                                    )
-                                    .when(is_search_active, |el| {
-                                        el.child(
-                                            div()
-                                                .id("clear_search_btn")
-                                                .cursor_pointer()
-                                                .text_color(rgb(0x9a91a8))
-                                                .text_size(px(13.))
-                                                .on_click(cx.listener(|this, _, _, cx| {
-                                                    this.search_query.clear();
-                                                    this.search_field.update(cx, |f, cx| {
-                                                        f.set_text("", cx);
-                                                    });
-                                                    cx.notify();
-                                                }))
-                                                .child("✕"),
-                                        )
-                                    }),
-                            )
-                            // Right Top Bar Controls: 🔔 + ⋮ + Window controls
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap_2p5()
-                                    .flex_shrink_0()
-                                    // Notification Circle Button
-                                    .child(
-                                        div()
-                                            .id("bell_circle_btn")
-                                            .size(px(38.))
-                                            .rounded_full()
-                                            .bg(rgb(0x201c28))
-                                            .border_1()
-                                            .border_color(rgb(0x322a3d))
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .text_size(px(14.))
-                                            .text_color(rgb(0xcac4d0))
-                                            .hover(|h| h.bg(rgb(0x2b2436)))
-                                            .cursor_pointer()
-                                            .child("🔔"),
-                                    )
-                                    // Menu Circle Button
-                                    .child(
-                                        div()
-                                            .id("menu_circle_btn")
-                                            .size(px(38.))
-                                            .rounded_full()
-                                            .bg(rgb(0x201c28))
-                                            .border_1()
-                                            .border_color(rgb(0x322a3d))
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .text_size(px(16.))
-                                            .text_color(rgb(0xcac4d0))
-                                            .hover(|h| h.bg(rgb(0x2b2436)))
-                                            .cursor_pointer()
-                                            .on_click(cx.listener(|this, _, _, cx| {
-                                                this.pick_file(cx);
-                                            }))
-                                            .child("⋮"),
-                                    )
-                                    // Window Control Buttons (—, □, ✕)
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .gap_1()
-                                            .pl_2()
-                                            .child(
-                                                div()
-                                                    .size(px(28.))
-                                                    .flex()
-                                                    .items_center()
-                                                    .justify_center()
-                                                    .text_color(rgb(0x9a91a8))
-                                                    .hover(|h| h.text_color(rgb(0xffffff)))
-                                                    .cursor_pointer()
-                                                    .child("—"),
-                                            )
-                                            .child(
-                                                div()
-                                                    .size(px(28.))
-                                                    .flex()
-                                                    .items_center()
-                                                    .justify_center()
-                                                    .text_color(rgb(0x9a91a8))
-                                                    .hover(|h| h.text_color(rgb(0xffffff)))
-                                                    .cursor_pointer()
-                                                    .child("□"),
-                                            )
-                                            .child(
-                                                div()
-                                                    .size(px(28.))
-                                                    .flex()
-                                                    .items_center()
-                                                    .justify_center()
-                                                    .text_color(rgb(0x9a91a8))
-                                                    .hover(|h| h.text_color(rgb(0xed6a5e)))
-                                                    .cursor_pointer()
-                                                    .child("✕"),
-                                            ),
-                                    ),
-                            ),
-                    )
-                    // Notification Toast
-                    .when_some(self.toast.clone(), |el, (msg, is_err)| {
-                        el.child(
+                    .bg(s.surface)
+                    // Search and install controls belong to the application pages.
+                    .when(self.active_tab != NavTab::DropInstaller, |workspace| {
+                        workspace.child(
                             div()
                                 .flex_none()
-                                .mx_8()
-                                .mt_2()
-                                .p_3()
-                                .rounded(px(14.))
-                                .bg(if is_err { rgb(0x421818) } else { rgb(0x24382c) })
-                                .border_1()
-                                .border_color(if is_err { rgb(0x662424) } else { rgb(0x385c46) })
-                                .text_color(if is_err { rgb(0xf2b8b5) } else { rgb(0xa8dab5) })
+                                .h(px(64.))
+                                .px_8()
+                                .bg(s.surface)
+                                .border_b_1()
+                                .border_color(s.outline_variant)
                                 .flex()
                                 .items_center()
                                 .justify_between()
-                                .child(div().text_size(px(13.)).child(msg))
+                                .gap_4()
+                                // Centered Search Bar
                                 .child(
-                                    Button::new("toast_dismiss", "Dismiss")
-                                        .text()
-                                        .on_click(cx.listener(|this, _, _, cx| {
-                                            this.toast = None;
-                                            cx.notify();
-                                        })),
+                                    div()
+                                        .flex_1()
+                                        .min_w_0()
+                                        .max_w(px(680.))
+                                        .h(px(42.))
+                                        .bg(s.surface_container_high)
+                                        .border_1()
+                                        .border_color(s.outline_variant)
+                                        .rounded(px(21.))
+                                        .px_4()
+                                        .flex()
+                                        .items_center()
+                                        .gap_3()
+                                        .child(
+                                            div()
+                                                .text_color(s.on_surface_variant)
+                                                .text_size(px(15.))
+                                                .child(
+                                                    Icon::new("search")
+                                                        .size(px(18.))
+                                                        .color(s.on_surface_variant),
+                                                ),
+                                        )
+                                        .child(
+                                            div()
+                                                .flex_1()
+                                                .min_w_0()
+                                                .child(self.search_field.clone()),
+                                        )
+                                        .when(is_search_active, |el| {
+                                            el.child(
+                                                div()
+                                                    .id("clear_search_btn")
+                                                    .cursor_pointer()
+                                                    .text_color(s.on_surface_variant)
+                                                    .text_size(px(13.))
+                                                    .on_click(cx.listener(|this, _, _, cx| {
+                                                        this.search_query.clear();
+                                                        this.search_field.update(cx, |f, cx| {
+                                                            f.set_text("", cx);
+                                                        });
+                                                        cx.notify();
+                                                    }))
+                                                    .child("✕"),
+                                            )
+                                        }),
+                                )
+                                // Keep one clear install action in the app bar.
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .gap_3()
+                                        .flex_shrink_0()
+                                        .child(
+                                            div()
+                                                .id("header_theme_toggle")
+                                                .size(px(36.))
+                                                .rounded_full()
+                                                .flex()
+                                                .items_center()
+                                                .justify_center()
+                                                .cursor_pointer()
+                                                .hover(|h| h.bg(s.surface_container_high))
+                                                .on_click(cx.listener(|this, _, _, cx| {
+                                                    this.toggle_theme(cx);
+                                                }))
+                                                .child(
+                                                    Icon::new(if self.dark_mode {
+                                                        "sun"
+                                                    } else {
+                                                        "moon"
+                                                    })
+                                                    .size(px(17.))
+                                                    .color(s.on_surface_variant),
+                                                ),
+                                        )
+                                        .child(
+                                        Button::new("header_install", "Install package")
+                                            .filled()
+                                            .on_click(
+                                                cx.listener(|this, _, _, cx| this.pick_file(cx)),
+                                            ),
+                                    ),
                                 ),
                         )
                     })
@@ -938,33 +955,108 @@ impl Render for AppView {
                     .child(
                         div()
                             .flex_1()
+                            .min_w_0()
                             .min_h_0()
                             .id("main_scroll")
                             .overflow_y_scroll()
                             .px_8()
                             .py_4()
-                            .child(match self.active_tab {
-                                NavTab::DropInstaller => self.render_installer_view(cx, s).into_any_element(),
-                                NavTab::Updates => self.render_updates_view(cx, s).into_any_element(),
-                                NavTab::Discover => self.render_discover_view(cx, s).into_any_element(),
-                                NavTab::Settings => self.render_settings_view(cx, s).into_any_element(),
-                                _ => {
-                                    if self.candidate.is_some() {
-                                        self.render_installer_view(cx, s).into_any_element()
-                                    } else {
-                                        self.render_app_hub_view(cx, s).into_any_element()
-                                    }
-                                }
-                            }),
+                            .child(
+                                div()
+                                    .relative()
+                                    .top(px((1. - view_p) * 10.))
+                                    .opacity(view_p.clamp(0., 1.))
+                                    .child(match self.active_tab {
+                                        NavTab::DropInstaller => {
+                                            self.render_installer_view(cx, s)
+                                                .into_any_element()
+                                        }
+                                        NavTab::Updates => {
+                                            self.render_updates_view(cx, s).into_any_element()
+                                        }
+                                        NavTab::Discover => {
+                                            self.render_discover_view(cx, s).into_any_element()
+                                        }
+                                        NavTab::Settings => {
+                                            self.render_settings_view(cx, s).into_any_element()
+                                        }
+                                        _ => self
+                                            .render_app_hub_view(window, cx, s)
+                                            .into_any_element(),
+                                    }),
+                            ),
                     ),
             )
+            // Floating toast pill
+            .when_some(self.toast.clone(), |el, (msg, is_err)| {
+                let tp = motion::entrance("toast", Spring::EFFECTS_FAST, 0., window, cx);
+                el.child(
+                    div()
+                        .absolute()
+                        .bottom(px(28.))
+                        .left_0()
+                        .right_0()
+                        .flex()
+                        .justify_center()
+                        .child(
+                            div()
+                                .id("toast_pill")
+                                .relative()
+                                .top(px((1. - tp) * 10.))
+                                .opacity(tp.clamp(0., 1.))
+                                .flex()
+                                .items_center()
+                                .gap_2p5()
+                                .pl_3()
+                                .pr_1p5()
+                                .py_1p5()
+                                .rounded_full()
+                                .bg(s.inverse_surface)
+                                .text_color(s.inverse_on_surface)
+                                .shadow(glass_shadow(&s))
+                                .child(
+                                    Icon::new(if is_err { "x" } else { "check" })
+                                        .size(px(15.))
+                                        .color(if is_err { s.error } else { s.success }),
+                                )
+                                .child(
+                                    div()
+                                        .text_size(px(12.5))
+                                        .font_weight(FontWeight::MEDIUM)
+                                        .child(msg),
+                                )
+                                .child(
+                                    div()
+                                        .id("toast_dismiss")
+                                        .size(px(24.))
+                                        .rounded_full()
+                                        .flex()
+                                        .items_center()
+                                        .justify_center()
+                                        .cursor_pointer()
+                                        .hover(|h| {
+                                            h.bg(alpha(s.inverse_on_surface, 0.12))
+                                        })
+                                        .on_click(cx.listener(|this, _, _, cx| {
+                                            this.toast = None;
+                                            cx.notify();
+                                        }))
+                                        .child(
+                                            Icon::new("x")
+                                                .size(px(13.))
+                                                .color(s.inverse_on_surface),
+                                        ),
+                                ),
+                        ),
+                )
+            })
             // App Details Inspector Modal
             .when_some(self.selected_app_details.clone(), |el, app| {
-                el.child(self.render_app_details_modal(app, cx, s))
+                el.child(self.render_app_details_modal(window, app, cx, s))
             })
             // Uninstall Confirmation Modal
             .when_some(self.selected_for_uninstall.clone(), |el, app| {
-                el.child(self.render_uninstall_modal(app, cx, s))
+                el.child(self.render_uninstall_modal(window, app, cx, s))
             })
     }
 }
@@ -977,775 +1069,437 @@ impl AppView {
         icon: &'static str,
         count: usize,
         active: bool,
+        _s: Scheme,
         on_click: impl Fn(&gpui::ClickEvent, &mut Window, &mut gpui::App) + 'static,
     ) -> impl IntoElement {
-        let is_active = active;
-        div()
-            .id(id)
-            .w_full()
-            .px_3p5()
-            .py_2p5()
-            .rounded_full()
-            .cursor_pointer()
-            .when(is_active, |el| {
-                el.bg(rgb(0xcfbcff)).text_color(rgb(0x1e1035))
-            })
-            .when(!is_active, |el| {
-                el.text_color(rgb(0xcac4d0))
-                    .hover(|h| h.bg(rgb(0x231e2d)).text_color(rgb(0xffffff)))
-            })
+        NavItem::new(id, label)
+            .icon(icon)
+            .meta(count.to_string())
+            .selected(active)
             .on_click(on_click)
-            .flex()
-            .items_center()
-            .justify_between()
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap_3()
-                    .child(
-                        div()
-                            .text_size(px(15.))
-                            .child(icon),
-                    )
-                    .child(
-                        div()
-                            .text_size(px(13.5))
-                            .font_weight(if is_active { FontWeight::BOLD } else { FontWeight::NORMAL })
-                            .child(label),
-                    ),
-            )
-            .child(
-                div()
-                    .px_2()
-                    .py_0p5()
-                    .rounded_full()
-                    .text_size(px(11.))
-                    .font_weight(FontWeight::BOLD)
-                    .when(is_active, |el| {
-                        el.bg(rgb(0xba9eff)).text_color(rgb(0x1e1035))
-                    })
-                    .when(!is_active, |el| {
-                        el.text_color(rgb(0x8f869e))
-                    })
-                    .child(count.to_string()),
-            )
     }
 
     fn render_installer_view(&self, cx: &mut Context<Self>, s: Scheme) -> impl IntoElement {
-        let managed_apps: Vec<InstalledApp> = self.apps.iter().filter(|a| a.is_managed_by_installxs).cloned().collect();
+        let downloads = if self.downloaded_packages.is_empty() {
+            div()
+                .p_4()
+                .rounded(px(12.))
+                .bg(glass_bg_high(&s))
+                .child(
+                    div()
+                        .text_size(px(12.5))
+                        .text_color(s.on_surface_variant)
+                        .child("Supported packages in ~/Downloads will appear here."),
+                )
+                .into_any_element()
+        } else {
+            let mut list = div().flex().flex_col().gap_2();
+            for (index, candidate) in self.downloaded_packages.iter().take(5).enumerate() {
+                let path = candidate.source_path.clone();
+                let icon = match &candidate.kind {
+                    crate::models::FileKind::AppImage => "bolt",
+                    crate::models::FileKind::Deb | crate::models::FileKind::ArchPkg => "box",
+                    _ => "folder",
+                };
+                list = list.child(
+                    div()
+                        .id(("downloaded_package", index))
+                        .w_full()
+                        .p_2p5()
+                        .rounded(px(12.))
+                        .hover(|el| el.bg(s.surface_container_high))
+                        .cursor_pointer()
+                        .flex()
+                        .items_center()
+                        .gap_3()
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.stage_file(path.clone(), cx);
+                        }))
+                        .child(
+                            div()
+                                .size(px(36.))
+                                .rounded(px(10.))
+                                .bg(s.surface_container_high)
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .child(Icon::new(icon).size(px(18.)).color(s.on_surface_variant)),
+                        )
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .flex()
+                                .flex_col()
+                                .gap_0p5()
+                                .child(
+                                    div()
+                                        .truncate()
+                                        .text_size(px(12.5))
+                                        .font_weight(FontWeight::SEMIBOLD)
+                                        .text_color(s.on_surface)
+                                        .child(candidate.suggested_name.clone()),
+                                )
+                                .child(
+                                    div()
+                                        .truncate()
+                                        .text_size(px(11.))
+                                        .text_color(s.on_surface_variant)
+                                        .child(format!(
+                                            "{} · {}",
+                                            format_file_size(candidate.file_size),
+                                            candidate.file_name
+                                        )),
+                                ),
+                        )
+                        .child(
+                            Icon::new("chevron-right")
+                                .size(px(16.))
+                                .color(s.on_surface_variant),
+                        ),
+                );
+            }
+            list.into_any_element()
+        };
 
-        div()
-            .w_full()
-            .max_w(px(1440.))
-            .mx_auto()
-            .flex()
-            .flex_col()
-            .gap_6()
-            .pb_12()
-            // 1. Top Navigation & Header
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .pt_2()
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_4()
-                            .child(
-                                div()
-                                    .id("back_to_apps_btn")
-                                    .cursor_pointer()
-                                    .px_4()
-                                    .py_2()
-                                    .rounded_full()
-                                    .bg(rgb(0x201c28))
-                                    .border_1()
-                                    .border_color(rgb(0x322a3d))
-                                    .hover(|h| h.bg(rgb(0x282136)).text_color(rgb(0xffffff)))
-                                    .text_color(rgb(0xcac4d0))
-                                    .text_size(px(13.))
-                                    .font_weight(FontWeight::MEDIUM)
-                                    .flex()
-                                    .items_center()
-                                    .gap_2()
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.active_tab = NavTab::Applications;
-                                        cx.notify();
-                                    }))
-                                    .child("← Back to Applications"),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .child(
-                                        div()
-                                            .font_weight(FontWeight::BOLD)
-                                            .text_size(px(20.))
-                                            .text_color(rgb(0xffffff))
-                                            .child("Package Installer & Integration"),
-                                    )
-                                    .child(
-                                        div()
-                                            .text_size(px(12.5))
-                                            .text_color(rgb(0x9a91a8))
-                                            .child("Install, configure, and register standalone packages to your Arch system"),
-                                    ),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_2()
-                            .child(div().px_2p5().py_1().rounded_full().bg(rgb(0x351f4c)).text_color(rgb(0xdfb2fe)).text_size(px(11.)).font_weight(FontWeight::BOLD).child(".AppImage"))
-                            .child(div().px_2p5().py_1().rounded_full().bg(rgb(0x182840)).text_color(rgb(0xa2cafe)).text_size(px(11.)).font_weight(FontWeight::BOLD).child(".tar.gz / .xz"))
-                            .child(div().px_2p5().py_1().rounded_full().bg(rgb(0x193322)).text_color(rgb(0xa2e8bd)).text_size(px(11.)).font_weight(FontWeight::BOLD).child(".zip"))
-                            .child(div().px_2p5().py_1().rounded_full().bg(rgb(0x3d2c18)).text_color(rgb(0xf5d098)).text_size(px(11.)).font_weight(FontWeight::BOLD).child(".deb"))
-                            .child(div().px_2p5().py_1().rounded_full().bg(rgb(0x262132)).text_color(rgb(0xcac4d0)).text_size(px(11.)).font_weight(FontWeight::BOLD).child("binary")),
-                    ),
-            )
-            // 2. Studio Main Row (Left: Drop Target or Staged Card + Architecture Cards, Right: Detected in Downloads)
-            .child(
-                div()
-                    .flex()
-                    .items_start()
-                    .gap_6()
-                    .w_full()
-                    // Left Column (Drop Target / Staged Card + Architecture Cards)
-                    .child(
-                        div()
-                            .flex_1()
-                            .flex()
-                            .flex_col()
-                            .gap_5()
-                            // If NO candidate staged: Large Interactive Drop Target Card
-                            .when(self.candidate.is_none(), |col| {
-                                col.child(
+        let main_panel = if let Some(candidate) = self.candidate.clone() {
+            let kind_label = match &candidate.kind {
+                crate::models::FileKind::AppImage => "AppImage",
+                crate::models::FileKind::TarGz
+                | crate::models::FileKind::TarXz
+                | crate::models::FileKind::TarBz2
+                | crate::models::FileKind::Zip => "Archive",
+                crate::models::FileKind::Deb => "Debian package",
+                crate::models::FileKind::ArchPkg => "Arch package",
+                crate::models::FileKind::DesktopFile => "Desktop entry",
+                crate::models::FileKind::ExecutableBinary => "Executable",
+                crate::models::FileKind::Unknown => "Package",
+            };
+            let (status, status_color) = match &self.install_state {
+                InstallState::Idle => ("Ready to install".to_string(), s.on_surface_variant),
+                InstallState::Inspecting(message) => (message.clone(), s.primary),
+                InstallState::Installing { step, .. } => (step.clone(), s.primary),
+                InstallState::Success { message, .. } => (message.clone(), s.success),
+                InstallState::Error(error) => (error.clone(), s.error),
+            };
+            let can_install = matches!(
+                &self.install_state,
+                InstallState::Idle | InstallState::Error(_)
+            );
+            let installed = matches!(&self.install_state, InstallState::Success { .. });
+
+            div()
+                .w_full()
+                .p_6()
+                .rounded(px(20.))
+                .bg(glass_bg(&s))
+                .border_1()
+                .border_color(s.outline_variant)
+                .shadow(glass_shadow(&s))
+                .flex()
+                .flex_col()
+                .gap_5()
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_4()
+                        .child(
+                            div()
+                                .size(px(52.))
+                                .rounded(px(14.))
+                                .bg(s.primary_container)
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .child(
+                                    Icon::new("box").size(px(26.)).color(s.on_primary_container),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .flex()
+                                .flex_col()
+                                .gap_1()
+                                .child(
                                     div()
-                                        .id("dropzone_interactive_card")
-                                        .p_8()
-                                        .min_h(px(280.))
-                                        .rounded(px(24.))
-                                        .bg(rgb(0x1e182c))
-                                        .border_2()
-                                        .border_color(rgb(0x4a3666))
-                                        .hover(|h| h.bg(rgb(0x241d34)).border_color(rgb(0xcfbcff)))
-                                        .cursor_pointer()
+                                        .text_size(px(19.))
+                                        .font_weight(FontWeight::SEMIBOLD)
+                                        .text_color(s.on_surface)
+                                        .truncate()
+                                        .child(candidate.suggested_name.clone()),
+                                )
+                                .child(
+                                    div()
+                                        .text_size(px(12.5))
+                                        .text_color(s.on_surface_variant)
+                                        .truncate()
+                                        .child(candidate.file_name.clone()),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .px_3()
+                                .py_1p5()
+                                .rounded_full()
+                                .bg(s.surface_container_high)
+                                .text_size(px(11.5))
+                                .text_color(s.on_surface_variant)
+                                .child(kind_label),
+                        ),
+                )
+                .child(div().h(px(1.)).bg(s.outline_variant))
+                .child(
+                    div()
+                        .flex()
+                        .flex_col()
+                        .gap_1()
+                        .child(
+                            div()
+                                .text_size(px(11.))
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .text_color(s.on_surface_variant)
+                                .child("PACKAGE SIZE"),
+                        )
+                        .child(
+                            div()
+                                .text_size(px(14.))
+                                .text_color(s.on_surface)
+                                .child(format_file_size(candidate.file_size)),
+                        ),
+                )
+                .child(
+                    div()
+                        .p_3()
+                        .rounded(px(10.))
+                        .bg(glass_bg_high(&s))
+                        .text_size(px(12.5))
+                        .text_color(status_color)
+                        .child(status),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .justify_between()
+                        .gap_3()
+                        .child(
+                            Button::new("cancel_staged_btn", "Remove file")
+                                .text()
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.candidate = None;
+                                    this.install_state = InstallState::Idle;
+                                    cx.notify();
+                                })),
+                        )
+                        .child(if installed {
+                            Button::new("done_install_btn", "View installed apps")
+                                .tonal()
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.candidate = None;
+                                    this.active_tab = NavTab::Managed;
+                                    cx.notify();
+                                }))
+                                .into_any_element()
+                        } else if can_install {
+                            Button::new("do_install_btn", "Install now")
+                                .filled()
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.install_current_candidate(cx);
+                                }))
+                                .into_any_element()
+                        } else {
+                            div()
+                                .text_size(px(12.))
+                                .text_color(s.on_surface_variant)
+                                .child("Working…")
+                                .into_any_element()
+                        }),
+                )
+                .into_any_element()
+        } else {
+            div()
+                .w_full()
+                .min_h(px(400.))
+                .p_10()
+                .rounded(px(20.))
+                .border_2()
+                .border_dashed()
+                .border_color(alpha(s.primary, 0.4))
+                .bg(gpui::linear_gradient(
+                    180.,
+                    gpui::linear_color_stop(alpha(s.primary_container, 0.55), 0.),
+                    gpui::linear_color_stop(alpha(s.primary_container, 0.12), 1.),
+                ))
+                .flex()
+                .flex_col()
+                .items_center()
+                .justify_center()
+                .gap_5()
+                .child(
+                    div()
+                        .size(px(72.))
+                        .rounded(px(22.))
+                        .bg(s.primary_container)
+                        .border_1()
+                        .border_color(s.outline_variant)
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .child(Icon::new("import").size(px(34.)).color(s.on_primary_container)),
+                )
+                .child(
+                    div()
+                        .text_size(px(21.))
+                        .font_weight(FontWeight::BOLD)
+                        .text_color(s.on_surface)
+                        .child("Drop a package to install"),
+                )
+                .child(
+                    div()
+                        .text_size(px(13.))
+                        .text_color(s.on_surface_variant)
+                        .child("AppImage, .deb, .tar.gz, .zip or a plain executable — drop it anywhere in this window."),
+                )
+                .child(
+                    Button::new("browse_packages_btn", "Browse files")
+                        .filled()
+                        .on_click(cx.listener(|this, _, _, cx| this.pick_file(cx))),
+                )
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_2()
+                        .children(
+                            ["AppImage", ".deb", ".tar.gz", ".zip", "binary"]
+                                .iter()
+                                .map(|label| {
+                                    div()
+                                        .px_2p5()
+                                        .py_0p5()
+                                        .rounded_full()
+                                        .bg(glass_bg_high(&s))
+                                        .border_1()
+                                        .border_color(s.outline_variant)
+                                        .text_size(px(11.))
+                                        .font_weight(FontWeight::MEDIUM)
+                                        .text_color(s.on_surface_variant)
+                                        .child(*label)
+                                }),
+                        ),
+                )
+                .into_any_element()
+        };
+
+        div().w_full().flex().justify_center().child(
+            div()
+                .w_full()
+                .max_w(px(1240.))
+                .flex()
+                .flex_col()
+                .gap_6()
+                .pb_12()
+                .child(render_page_heading(
+                    "Install package",
+                    "Review a package before adding it to your application library.",
+                    Some(
+                        Button::new("installer_back", "Applications")
+                            .tonal()
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.active_tab = NavTab::Applications;
+                                cx.notify();
+                            }))
+                            .into_any_element(),
+                    ),
+                    s,
+                ))
+                .child(
+                    div()
+                        .w_full()
+                        .flex()
+                        .flex_wrap()
+                        .items_start()
+                        .gap_5()
+                        .min_w_0()
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w(px(460.))
+                                .max_w(px(900.))
+                                .flex()
+                                .flex_col()
+                                .gap_4()
+                                .child(main_panel),
+                        )
+                        .child(
+                            div()
+                                .w(px(300.))
+                                .flex_shrink_0()
+                                .p_4()
+                                .rounded(px(20.))
+                                .bg(glass_bg(&s))
+                                .border_1()
+                                .border_color(s.outline_variant)
+                                .shadow(glass_shadow(&s))
+                                .flex()
+                                .flex_col()
+                                .gap_3()
+                                .child(
+                                    div()
                                         .flex()
-                                        .flex_col()
                                         .items_center()
-                                        .justify_center()
-                                        .gap_3()
-                                        .on_click(cx.listener(|this, _, _, cx| {
-                                            this.pick_file(cx);
-                                        }))
+                                        .justify_between()
                                         .child(
                                             div()
-                                                .size(px(68.))
-                                                .rounded(px(22.))
-                                                .bg(rgb(0x33224d))
-                                                .border_1()
-                                                .border_color(rgb(0x56387d))
                                                 .flex()
                                                 .items_center()
-                                                .justify_center()
-                                                .text_size(px(34.))
-                                                .child("📦"),
+                                                .gap_2p5()
+                                                .child(
+                                                    Icon::new("folder")
+                                                        .size(px(17.))
+                                                        .color(s.on_surface_variant),
+                                                )
+                                                .child(
+                                                    div()
+                                                        .font_weight(FontWeight::SEMIBOLD)
+                                                        .text_size(px(14.))
+                                                        .text_color(s.on_surface)
+                                                        .child("From Downloads"),
+                                                ),
                                         )
                                         .child(
                                             div()
-                                                .font_weight(FontWeight::BOLD)
-                                                .text_size(px(22.))
-                                                .text_color(rgb(0xffffff))
-                                                .child("Drop App Package to Install"),
-                                        )
-                                        .child(
-                                            div()
-                                                .text_size(px(13.5))
-                                                .text_color(rgb(0x9a91a8))
-                                                .child("Drag and drop any .AppImage, .tar.gz, .tar.xz, .zip, .deb, or binary here"),
-                                        )
-                                        .child(
-                                            div()
-                                                .mt_2()
-                                                .px_6()
-                                                .py_2p5()
-                                                .rounded_full()
-                                                .bg(rgb(0xcfbcff))
-                                                .hover(|h| h.bg(rgb(0xe8def8)))
-                                                .text_color(rgb(0x1e1035))
-                                                .font_weight(FontWeight::BOLD)
-                                                .text_size(px(13.5))
-                                                .flex()
-                                                .items_center()
-                                                .gap_2()
-                                                .child("📂 Browse Files from Computer"),
-                                        )
-                                        .child(
-                                            div()
-                                                .mt_1()
                                                 .text_size(px(11.5))
-                                                .text_color(rgb(0x7c738c))
-                                                .child("Auto-extracts icons • FreeDesktop launcher • ~/.local/bin/ symlink • Clean manifest"),
+                                                .text_color(s.on_surface_variant)
+                                                .child(self.downloaded_packages.len().to_string()),
                                         ),
                                 )
-                            })
-                            // If candidate IS staged: Staged Candidate Card
-                            .when_some(self.candidate.clone(), |col, cand| {
-                                col.child(
+                                .child(
                                     div()
-                                        .p_6()
-                                        .rounded(px(24.))
-                                        .bg(rgb(0x1f192d))
-                                        .border_2()
-                                        .border_color(rgb(0xcfbcff))
-                                        .flex()
-                                        .flex_col()
-                                        .gap_4()
-                                        .child(
-                                            div()
-                                                .flex()
-                                                .items_center()
-                                                .justify_between()
-                                                .child(
-                                                    div()
-                                                        .flex()
-                                                        .items_center()
-                                                        .gap_3p5()
-                                                        .child(
-                                                            div()
-                                                                .size(px(52.))
-                                                                .rounded(px(16.))
-                                                                .bg(rgb(0x33224d))
-                                                                .border_1()
-                                                                .border_color(rgb(0x56387d))
-                                                                .flex()
-                                                                .items_center()
-                                                                .justify_center()
-                                                                .text_size(px(26.))
-                                                                .child("🚀"),
-                                                        )
-                                                        .child(
-                                                            div()
-                                                                .flex()
-                                                                .flex_col()
-                                                                .child(
-                                                                    div()
-                                                                        .font_weight(FontWeight::BOLD)
-                                                                        .text_size(px(18.))
-                                                                        .text_color(rgb(0xffffff))
-                                                                        .child(cand.suggested_name.clone()),
-                                                                )
-                                                                .child(
-                                                                    div()
-                                                                        .text_size(px(12.5))
-                                                                        .text_color(rgb(0x9a91a8))
-                                                                        .child(format!(
-                                                                            "{} • {:.1} MB",
-                                                                            cand.file_name,
-                                                                            cand.file_size as f64 / 1_048_576.0
-                                                                        )),
-                                                                ),
-                                                        ),
-                                                )
-                                                .child(
-                                                    div()
-                                                        .px_3()
-                                                        .py_1()
-                                                        .rounded_full()
-                                                        .bg(rgb(0x351f4c))
-                                                        .text_color(rgb(0xdfb2fe))
-                                                        .text_size(px(11.5))
-                                                        .font_weight(FontWeight::BOLD)
-                                                        .child(format!("{:?}", cand.kind)),
-                                                ),
-                                        )
-                                        .child(
-                                            div()
-                                                .p_4()
-                                                .rounded(px(16.))
-                                                .bg(rgb(0x161220))
-                                                .border_1()
-                                                .border_color(rgb(0x2d243c))
-                                                .flex()
-                                                .flex_col()
-                                                .gap_2()
-                                                .child(
-                                                    div()
-                                                        .text_size(px(12.))
-                                                        .font_weight(FontWeight::BOLD)
-                                                        .text_color(rgb(0xcfbcff))
-                                                        .child("Automated System Integration Steps:"),
-                                                )
-                                                .child(
-                                                    div()
-                                                        .text_size(px(12.))
-                                                        .text_color(rgb(0xcac4d0))
-                                                        .child("✔ Installs cleanly into ~/.local/share/installxs/apps/"),
-                                                )
-                                                .child(
-                                                    div()
-                                                        .text_size(px(12.))
-                                                        .text_color(rgb(0xcac4d0))
-                                                        .child("✔ Generates FreeDesktop launcher in ~/.local/share/applications/"),
-                                                )
-                                                .child(
-                                                    div()
-                                                        .text_size(px(12.))
-                                                        .text_color(rgb(0xcac4d0))
-                                                        .child("✔ Creates terminal executable symlink in ~/.local/bin/"),
-                                                )
-                                                .child(
-                                                    div()
-                                                        .text_size(px(12.))
-                                                        .text_color(rgb(0xcac4d0))
-                                                        .child("✔ Records exact file manifest for complete 1-click clean uninstall"),
-                                                ),
-                                        )
-                                        .child(
-                                            div()
-                                                .flex()
-                                                .items_center()
-                                                .justify_between()
-                                                .pt_2()
-                                                .child(
-                                                    div()
-                                                        .text_size(px(13.))
-                                                        .text_color(rgb(0xcac4d0))
-                                                        .child(match &self.install_state {
-                                                            InstallState::Idle => "Ready to install to system.".to_string(),
-                                                            InstallState::Inspecting(_) => "Inspecting archive contents...".to_string(),
-                                                            InstallState::Installing { step, .. } => format!("⏳ {}", step),
-                                                            InstallState::Success { message, .. } => format!("✅ {}", message),
-                                                            InstallState::Error(err) => format!("❌ {}", err),
-                                                        }),
-                                                )
-                                                .child(
-                                                    div()
-                                                        .flex()
-                                                        .items_center()
-                                                        .gap_3()
-                                                        .child(
-                                                            div()
-                                                                .id("cancel_staged_btn")
-                                                                .px_4()
-                                                                .py_2()
-                                                                .rounded_full()
-                                                                .bg(rgb(0x282236))
-                                                                .hover(|h| h.bg(rgb(0x352b45)))
-                                                                .text_color(rgb(0xcac4d0))
-                                                                .text_size(px(13.))
-                                                                .cursor_pointer()
-                                                                .on_click(cx.listener(|this, _, _, cx| {
-                                                                    this.candidate = None;
-                                                                    this.install_state = InstallState::Idle;
-                                                                    cx.notify();
-                                                                }))
-                                                                .child("Cancel"),
-                                                        )
-                                                        .when(
-                                                            matches!(self.install_state, InstallState::Idle | InstallState::Error(_)),
-                                                            |row| {
-                                                                row.child(
-                                                                    div()
-                                                                        .id("do_install_btn")
-                                                                        .px_5()
-                                                                        .py_2()
-                                                                        .rounded_full()
-                                                                        .bg(rgb(0xcfbcff))
-                                                                        .hover(|h| h.bg(rgb(0xe8def8)))
-                                                                        .text_color(rgb(0x1e1035))
-                                                                        .font_weight(FontWeight::BOLD)
-                                                                        .text_size(px(13.))
-                                                                        .cursor_pointer()
-                                                                        .on_click(cx.listener(|this, _, _, cx| {
-                                                                            this.install_current_candidate(cx);
-                                                                        }))
-                                                                        .child("Install to System Now"),
-                                                                )
-                                                            },
-                                                        )
-                                                        .when(
-                                                            matches!(self.install_state, InstallState::Success { .. }),
-                                                            |row| {
-                                                                row.child(
-                                                                    div()
-                                                                        .id("done_install_btn")
-                                                                        .px_5()
-                                                                        .py_2()
-                                                                        .rounded_full()
-                                                                        .bg(rgb(0xcfbcff))
-                                                                        .hover(|h| h.bg(rgb(0xe8def8)))
-                                                                        .text_color(rgb(0x1e1035))
-                                                                        .font_weight(FontWeight::BOLD)
-                                                                        .text_size(px(13.))
-                                                                        .cursor_pointer()
-                                                                        .on_click(cx.listener(|this, _, _, cx| {
-                                                                            this.candidate = None;
-                                                                            this.active_tab = NavTab::Managed;
-                                                                            cx.notify();
-                                                                        }))
-                                                                        .child("View in App List"),
-                                                                )
-                                                            },
-                                                        ),
-                                                ),
-                                        ),
+                                        .text_size(px(12.))
+                                        .text_color(s.on_surface_variant)
+                                        .child("Select a recent package to review it."),
                                 )
-                            })
-                            // 3 Feature Architecture Cards (Row)
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap_3p5()
-                                    .child(
-                                        div()
-                                            .flex_1()
-                                            .p_4()
-                                            .rounded(px(18.))
-                                            .bg(rgb(0x1e192a))
-                                            .border_1()
-                                            .border_color(rgb(0x31273d))
-                                            .flex()
-                                            .flex_col()
-                                            .gap_1p5()
-                                            .child(
-                                                div()
-                                                    .size(px(36.))
-                                                    .rounded(px(10.))
-                                                    .bg(rgb(0x2f2146))
-                                                    .flex()
-                                                    .items_center()
-                                                    .justify_center()
-                                                    .text_size(px(18.))
-                                                    .child("⚡"),
-                                            )
-                                            .child(
-                                                div()
-                                                    .font_weight(FontWeight::BOLD)
-                                                    .text_size(px(13.5))
-                                                    .text_color(rgb(0xffffff))
-                                                    .child("Automated Isolation"),
-                                            )
-                                            .child(
-                                                div()
-                                                    .text_size(px(11.5))
-                                                    .text_color(rgb(0x9a91a8))
-                                                    .child("Installs into dedicated sandboxes in ~/.local/share/installxs/apps/."),
-                                            ),
-                                    )
-                                    .child(
-                                        div()
-                                            .flex_1()
-                                            .p_4()
-                                            .rounded(px(18.))
-                                            .bg(rgb(0x1e192a))
-                                            .border_1()
-                                            .border_color(rgb(0x31273d))
-                                            .flex()
-                                            .flex_col()
-                                            .gap_1p5()
-                                            .child(
-                                                div()
-                                                    .size(px(36.))
-                                                    .rounded(px(10.))
-                                                    .bg(rgb(0x19283f))
-                                                    .flex()
-                                                    .items_center()
-                                                    .justify_center()
-                                                    .text_size(px(18.))
-                                                    .child("🖥️"),
-                                            )
-                                            .child(
-                                                div()
-                                                    .font_weight(FontWeight::BOLD)
-                                                    .text_size(px(13.5))
-                                                    .text_color(rgb(0xffffff))
-                                                    .child("FreeDesktop Launcher"),
-                                            )
-                                            .child(
-                                                div()
-                                                    .text_size(px(11.5))
-                                                    .text_color(rgb(0x9a91a8))
-                                                    .child("Generates .desktop entries and ~/.local/bin/ symlinks for instant launch."),
-                                            ),
-                                    )
-                                    .child(
-                                        div()
-                                            .flex_1()
-                                            .p_4()
-                                            .rounded(px(18.))
-                                            .bg(rgb(0x1e192a))
-                                            .border_1()
-                                            .border_color(rgb(0x31273d))
-                                            .flex()
-                                            .flex_col()
-                                            .gap_1p5()
-                                            .child(
-                                                div()
-                                                    .size(px(36.))
-                                                    .rounded(px(10.))
-                                                    .bg(rgb(0x1a3324))
-                                                    .flex()
-                                                    .items_center()
-                                                    .justify_center()
-                                                    .text_size(px(18.))
-                                                    .child("🛡️"),
-                                            )
-                                            .child(
-                                                div()
-                                                    .font_weight(FontWeight::BOLD)
-                                                    .text_size(px(13.5))
-                                                    .text_color(rgb(0xffffff))
-                                                    .child("100% Clean Uninstall"),
-                                            )
-                                            .child(
-                                                div()
-                                                    .text_size(px(11.5))
-                                                    .text_color(rgb(0x9a91a8))
-                                                    .child("Tracks every installed file in SQLite for complete orphan-free removal."),
-                                            ),
-                                    ),
-                            ),
-                    )
-                    // Right Column: "Detected in ~/Downloads" (Quick Install Box)
-                    .child(
-                        div()
-                            .w(px(390.))
-                            .p_5()
-                            .rounded(px(24.))
-                            .bg(rgb(0x1a1527))
-                            .border_1()
-                            .border_color(rgb(0x31273d))
-                            .flex()
-                            .flex_col()
-                            .gap_3()
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .justify_between()
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .gap_2()
-                                            .child(div().text_size(px(18.)).child("📥"))
-                                            .child(
-                                                div()
-                                                    .font_weight(FontWeight::BOLD)
-                                                    .text_size(px(15.5))
-                                                    .text_color(rgb(0xffffff))
-                                                    .child("Detected in Downloads"),
-                                            ),
-                                    )
-                                    .child(
-                                        div()
-                                            .px_2p5()
-                                            .py_0p5()
-                                            .rounded_full()
-                                            .bg(rgb(0x351f4c))
-                                            .text_color(rgb(0xdfb2fe))
-                                            .text_size(px(11.))
-                                            .font_weight(FontWeight::BOLD)
-                                            .child(format!("{} found", self.downloaded_packages.len())),
-                                    ),
-                            )
-                            .child(
-                                div()
-                                    .text_size(px(12.))
-                                    .text_color(rgb(0x9a91a8))
-                                    .child("Packages found in your ~/Downloads folder. Click any to stage and install immediately:"),
-                            )
-                            .child(if self.downloaded_packages.is_empty() {
-                                div()
-                                    .p_4()
-                                    .rounded(px(14.))
-                                    .bg(rgb(0x221a30))
-                                    .border_1()
-                                    .border_color(rgb(0x36274a))
-                                    .flex()
-                                    .flex_col()
-                                    .gap_1p5()
-                                    .child(
-                                        div()
-                                            .font_weight(FontWeight::BOLD)
-                                            .text_size(px(13.))
-                                            .text_color(rgb(0xffffff))
-                                            .child("No packages in ~/Downloads"),
-                                    )
-                                    .child(
-                                        div()
-                                            .text_size(px(11.5))
-                                            .text_color(rgb(0x9a91a8))
-                                            .child("Downloaded .AppImage or archive files will be detected and shown here automatically."),
-                                    )
-                                    .into_any_element()
-                            } else {
-                                let mut list = div().flex().flex_col().gap_2();
-                                for (idx, cand) in self.downloaded_packages.iter().take(5).enumerate() {
-                                    let path = cand.source_path.clone();
-                                    let icon = match cand.kind {
-                                        crate::models::FileKind::AppImage => "🚀",
-                                        crate::models::FileKind::Deb => "📦",
-                                        _ => "📁",
-                                    };
-                                    list = list.child(
-                                        div()
-                                            .p_2p5()
-                                            .rounded(px(14.))
-                                            .bg(rgb(0x221a30))
-                                            .border_1()
-                                            .border_color(rgb(0x36274a))
-                                            .hover(|h| h.bg(rgb(0x2a1f3d)).border_color(rgb(0x56387d)))
-                                            .flex()
-                                            .items_center()
-                                            .justify_between()
-                                            .child(
-                                                div()
-                                                    .flex()
-                                                    .items_center()
-                                                    .gap_2p5()
-                                                    .flex_1()
-                                                    .child(
-                                                        div()
-                                                            .size(px(34.))
-                                                            .rounded(px(10.))
-                                                            .bg(rgb(0x33224d))
-                                                            .flex()
-                                                            .items_center()
-                                                            .justify_center()
-                                                            .text_size(px(16.))
-                                                            .child(icon),
-                                                    )
-                                                    .child(
-                                                        div()
-                                                            .flex()
-                                                            .flex_col()
-                                                            .child(
-                                                                div()
-                                                                    .font_weight(FontWeight::BOLD)
-                                                                    .text_size(px(12.5))
-                                                                    .text_color(rgb(0xffffff))
-                                                                    .child(cand.suggested_name.clone()),
-                                                            )
-                                                            .child(
-                                                                div()
-                                                                    .text_size(px(10.5))
-                                                                    .text_color(rgb(0x9a91a8))
-                                                                    .child(format!(
-                                                                        "{:.1} MB • {:?}",
-                                                                        cand.file_size as f64 / 1_048_576.0,
-                                                                        cand.kind
-                                                                    )),
-                                                            ),
-                                                    ),
-                                            )
-                                            .child(
-                                                div()
-                                                    .id(("dl_install_btn", idx as u32))
-                                                    .cursor_pointer()
-                                                    .px_3()
-                                                    .py_1p5()
-                                                    .rounded_full()
-                                                    .bg(rgb(0x3c2758))
-                                                    .hover(|h| h.bg(rgb(0xcfbcff)).text_color(rgb(0x1e1035)))
-                                                    .text_color(rgb(0xdfb2fe))
-                                                    .font_weight(FontWeight::BOLD)
-                                                    .text_size(px(11.5))
-                                                    .on_click(cx.listener({
-                                                        let p = path.clone();
-                                                        move |this, _, _, cx| {
-                                                            this.stage_file(p.clone(), cx);
-                                                        }
-                                                    }))
-                                                    .child("Install"),
-                                            ),
-                                    );
-                                }
-                                list.into_any_element()
-                            }),
-                    ),
-            )
-            // 3. Managed Apps Section (Bottom)
-            .child(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap_3()
-                    .pt_2()
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_2p5()
-                            .child(
-                                div()
-                                    .font_weight(FontWeight::BOLD)
-                                    .text_size(px(18.))
-                                    .text_color(rgb(0xffffff))
-                                    .child("Managed by InstallXS"),
-                            )
-                            .child(
-                                div()
-                                    .px_2p5()
-                                    .py_0p5()
-                                    .rounded_full()
-                                    .bg(rgb(0x282035))
-                                    .text_color(rgb(0xcac4d0))
-                                    .text_size(px(11.5))
-                                    .font_weight(FontWeight::MEDIUM)
-                                    .child(format!("{} apps", managed_apps.len())),
-                            ),
-                    )
-                    .child(if managed_apps.is_empty() {
-                        div()
-                            .p_6()
-                            .rounded(px(20.))
-                            .bg(rgb(0x1a1527))
-                            .border_1()
-                            .border_color(rgb(0x31273d))
-                            .flex()
-                            .items_center()
-                            .gap_4()
-                            .child(div().text_size(px(32.)).child("📁"))
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .child(
-                                        div()
-                                            .font_weight(FontWeight::BOLD)
-                                            .text_size(px(14.5))
-                                            .text_color(rgb(0xffffff))
-                                            .child("No standalone packages installed yet"),
-                                    )
-                                    .child(
-                                        div()
-                                            .text_size(px(12.))
-                                            .text_color(rgb(0x9a91a8))
-                                            .child("Packages you drop or install with InstallXS will be managed and tracked here with 1-click clean uninstall."),
-                                    ),
-                            )
-                            .into_any_element()
-                    } else {
-                        self.render_grid_cards(managed_apps, cx, s).into_any_element()
-                    }),
-            )
+                                .child(downloads),
+                        ),
+                ),
+        )
     }
 
-    fn render_app_hub_view(&self, cx: &mut Context<Self>, s: Scheme) -> impl IntoElement {
+    fn render_app_hub_view(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+        s: Scheme,
+    ) -> impl IntoElement {
         let apps: Vec<InstalledApp> = self.filtered_apps().into_iter().cloned().collect();
         let current_count = apps.len();
 
         let tab_title = match self.active_tab {
-            NavTab::Applications => "All applications",
+            NavTab::Applications => "Applications",
             NavTab::Managed => "Managed by InstallXS",
             NavTab::Updates => "Available updates",
             NavTab::Discover => "Discover & App Store",
@@ -1762,114 +1516,40 @@ impl AppView {
             .w_full()
             .flex()
             .flex_col()
+            .min_w_0()
             .gap_5()
             .pb_10()
-            // 1. Hero Banner (displayed when on Applications tab with empty search query)
-            .when(self.active_tab == NavTab::Applications && self.search_query.is_empty(), |el| {
-                el.child(
-                    div()
-                        .w_full()
-                        .h(px(196.))
-                        .rounded(px(28.))
-                        .bg(rgb(0x251b38))
-                        .overflow_hidden()
-                        .relative()
-                        .flex()
-                        .items_center()
-                        .justify_between()
-                        // Right Side Arch Logo Wave Art
-                        .child(
-                            div()
-                                .absolute()
-                                .top_0()
-                                .right_0()
-                                .bottom_0()
-                                .w(px(520.))
-                                .overflow_hidden()
-                                .flex()
-                                .items_center()
-                                .justify_end()
-                                .child(
-                                    img(PathBuf::from(format!("{}/assets/hero_wave.png", env!("CARGO_MANIFEST_DIR"))))
-                                        .h_full()
-                                        .w_auto()
-                                )
-                        )
-                        // Left Side Content
-                        .child(
-                            div()
-                                .relative()
-                                .max_w(px(560.))
-                                .py_6()
-                                .pl_8()
-                                .flex()
-                                .flex_col()
-                                .gap_2p5()
-                                .child(
-                                    div()
-                                        .font_weight(FontWeight::BOLD)
-                                        .text_size(px(28.))
-                                        .text_color(rgb(0xffffff))
-                                        .child("Your Arch app hub"),
-                                )
-                                .child(
-                                    div()
-                                        .text_size(px(14.))
-                                        .text_color(rgb(0xcac4d0))
-                                        .child("Discover, install, and manage applications across Pacman, AUR, AppImage and more."),
-                                )
-                                .child(
-                                    div()
-                                        .pt_2()
-                                        .child(
-                                            div()
-                                                .id("hero_get_started")
-                                                .cursor_pointer()
-                                                .px_6()
-                                                .py_2p5()
-                                                .rounded_full()
-                                                .bg(rgb(0xffffff))
-                                                .hover(|h| h.bg(rgb(0xe8def8)))
-                                                .text_color(rgb(0x181224))
-                                                .font_weight(FontWeight::BOLD)
-                                                .text_size(px(13.5))
-                                                .flex()
-                                                .items_center()
-                                                .gap_2()
-                                                .on_click(cx.listener(|this, _, _, cx| {
-                                                    this.active_tab = NavTab::DropInstaller;
-                                                    cx.notify();
-                                                }))
-                                                .child("Get started →"),
-                                        ),
-                                ),
-                        ),
-                )
-            })
-            // 2. Section Header: Title, count, and View/Sort Controls
+            // Section Header: Title, count, and View/Sort Controls
             .child(
                 div()
                     .flex()
                     .items_center()
                     .justify_between()
+                    .gap_4()
                     .pt_1()
                     .child(
                         div()
                             .flex()
-                            .flex_col()
-                            .gap_0p5()
+                            .items_center()
+                            .gap_3()
+                            .min_w_0()
                             .child(
                                 div()
-                                    .font_weight(FontWeight::BOLD)
-                                    .text_size(px(20.))
-                                    .text_color(rgb(0xffffff))
+                                    .font_weight(FontWeight::SEMIBOLD)
+                                    .text_size(px(24.))
+                                    .text_color(s.on_surface)
                                     .child(tab_title),
                             )
                             .child(
                                 div()
-                                    .text_size(px(13.))
-                                    .text_color(rgb(0x9a91a8))
-                                    .child(format!("{} applications", current_count)),
+                                    .px_2p5()
+                                    .py_0p5()
+                                    .rounded_full()
+                                    .bg(s.surface_container)
+                                    .text_size(px(11.5))
+                                    .font_weight(FontWeight::SEMIBOLD)
+                                    .text_color(s.on_surface_variant)
+                                    .child(current_count.to_string()),
                             ),
                     )
                     .child(
@@ -1884,70 +1564,40 @@ impl AppView {
                                     .items_center()
                                     .p(px(3.))
                                     .rounded(px(12.))
-                                    .bg(rgb(0x201c28))
+                                    .bg(glass_bg_high(&s))
                                     .border_1()
-                                    .border_color(rgb(0x322a3d))
+                                    .border_color(s.outline_variant)
                                     .child(
-                                        div()
-                                            .id("view_grid_btn")
-                                            .size(px(28.))
-                                            .rounded(px(8.))
-                                            .cursor_pointer()
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .when(self.view_mode == ViewMode::Grid, |el| {
-                                                el.bg(rgb(0xcfbcff)).text_color(rgb(0x1e1035))
-                                            })
-                                            .when(self.view_mode != ViewMode::Grid, |el| {
-                                                el.text_color(rgb(0x9a91a8)).hover(|h| h.text_color(rgb(0xffffff)))
-                                            })
+                                        IconButton::new("view_grid_btn", "blocks")
+                                            .selected(self.view_mode == ViewMode::Grid)
+                                            .tooltip("Grid view")
                                             .on_click(cx.listener(|this, _, _, cx| {
                                                 this.view_mode = ViewMode::Grid;
                                                 cx.notify();
-                                            }))
-                                            .child("⊞"),
+                                            })),
                                     )
                                     .child(
-                                        div()
-                                            .id("view_list_btn")
-                                            .size(px(28.))
-                                            .rounded(px(8.))
-                                            .cursor_pointer()
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
-                                            .when(self.view_mode == ViewMode::List, |el| {
-                                                el.bg(rgb(0xcfbcff)).text_color(rgb(0x1e1035))
-                                            })
-                                            .when(self.view_mode != ViewMode::List, |el| {
-                                                el.text_color(rgb(0x9a91a8)).hover(|h| h.text_color(rgb(0xffffff)))
-                                            })
+                                        IconButton::new("view_list_btn", "files")
+                                            .selected(self.view_mode == ViewMode::List)
+                                            .tooltip("List view")
                                             .on_click(cx.listener(|this, _, _, cx| {
                                                 this.view_mode = ViewMode::List;
                                                 cx.notify();
-                                            }))
-                                            .child("≡"),
+                                            })),
                                     ),
                             )
                             // Sort Dropdown Button
                             .child(
-                                div()
-                                    .id("sort_toggle_btn")
-                                    .px_3p5()
-                                    .py_1p5()
-                                    .rounded(px(14.))
-                                    .bg(rgb(0x201c28))
-                                    .border_1()
-                                    .border_color(rgb(0x322a3d))
-                                    .cursor_pointer()
-                                    .hover(|h| h.bg(rgb(0x282234)))
-                                    .flex()
-                                    .items_center()
-                                    .gap_2()
-                                    .text_size(px(12.5))
-                                    .font_weight(FontWeight::MEDIUM)
-                                    .text_color(rgb(0xe8def8))
+                                Button::new(
+                                    "sort_toggle_btn",
+                                    match self.sort_mode {
+                                        SortMode::Name => "Sort by: Name ⌵",
+                                        SortMode::Source => "Sort by: Source ⌵",
+                                        SortMode::Size => "Sort by: Disk Size ⌵",
+                                    },
+                                )
+                                    .outlined()
+                                    .size(ButtonSize::Small)
                                     .on_click(cx.listener(|this, _, _, cx| {
                                         this.sort_mode = match this.sort_mode {
                                             SortMode::Name => SortMode::Source,
@@ -1955,31 +1605,11 @@ impl AppView {
                                             SortMode::Size => SortMode::Name,
                                         };
                                         cx.notify();
-                                    }))
-                                    .child(match self.sort_mode {
-                                        SortMode::Name => "Sort by: Name ⌵",
-                                        SortMode::Source => "Sort by: Source ⌵",
-                                        SortMode::Size => "Sort by: Disk Size ⌵",
-                                    }),
+                                    })),
                             ),
                     ),
             )
-            // 3. Filter Chips (only when on Applications tab)
-            .when(self.active_tab == NavTab::Applications, |el| {
-                el.child(
-                    div()
-                        .flex()
-                        .items_center()
-                        .gap_2()
-                        .child(self.render_filter_chip("f_all", "✓ All", FilterChip::All, cx))
-                        .child(self.render_filter_chip("f_pacman", "📦 Pacman", FilterChip::Pacman, cx))
-                        .child(self.render_filter_chip("f_aur", "A AUR", FilterChip::Aur, cx))
-                        .child(self.render_filter_chip("f_appimage", "🚀 AppImage", FilterChip::AppImage, cx))
-                        .child(self.render_filter_chip("f_flatpak", "🧊 Flatpak", FilterChip::Flatpak, cx))
-                        .child(self.render_filter_chip("f_local", "📁 Local", FilterChip::Local, cx)),
-                )
-            })
-            // 4. Content Cards or Compact List
+            // 3. Content Cards or Compact List
             .child(if apps.is_empty() {
                 div()
                     .w_full()
@@ -1989,63 +1619,35 @@ impl AppView {
                     .items_center()
                     .justify_center()
                     .gap_3()
-                    .child(div().text_size(px(40.)).child("🔍"))
+                    .child(
+                        Icon::new("search")
+                            .size(px(32.))
+                            .color(s.on_surface_variant),
+                    )
                     .child(
                         div()
                             .font_weight(FontWeight::BOLD)
                             .text_size(px(18.))
-                            .text_color(rgb(0xffffff))
+                            .text_color(s.on_surface)
                             .child("No matching applications found"),
                     )
                     .child(
                         div()
                             .text_size(px(13.))
-                            .text_color(rgb(0x9a91a8))
-                            .child("Try clearing your search query or switching source filter."),
+                            .text_color(s.on_surface_variant)
+                            .child("Try another source in the sidebar or clear your search."),
                     )
                     .into_any_element()
             } else if self.view_mode == ViewMode::Grid {
-                self.render_grid_cards(apps, cx, s).into_any_element()
+                self.render_grid_cards(window, apps, cx, s).into_any_element()
             } else {
                 self.render_compact_list(apps, cx, s).into_any_element()
             })
     }
 
-    fn render_filter_chip(
-        &self,
-        id: &'static str,
-        label: &'static str,
-        chip: FilterChip,
-        cx: &mut Context<Self>,
-    ) -> impl IntoElement {
-        let is_active = self.active_filter == chip;
-        div()
-            .id(id)
-            .px_3p5()
-            .py_1p5()
-            .rounded_full()
-            .cursor_pointer()
-            .text_size(px(12.5))
-            .font_weight(if is_active { FontWeight::BOLD } else { FontWeight::MEDIUM })
-            .when(is_active, |el| {
-                el.bg(rgb(0xcfbcff)).text_color(rgb(0x1e1035))
-            })
-            .when(!is_active, |el| {
-                el.bg(rgb(0x201c28))
-                    .border_1()
-                    .border_color(rgb(0x322a3d))
-                    .text_color(rgb(0xcac4d0))
-                    .hover(|h| h.bg(rgb(0x2b2436)).text_color(rgb(0xffffff)))
-            })
-            .on_click(cx.listener(move |this, _, _, cx| {
-                this.active_filter = chip;
-                cx.notify();
-            }))
-            .child(label)
-    }
-
     fn render_grid_cards(
         &self,
+        window: &mut Window,
         apps: Vec<InstalledApp>,
         cx: &mut Context<Self>,
         s: Scheme,
@@ -2057,19 +1659,37 @@ impl AppView {
             .gap(px(18.))
             .children(apps.into_iter().enumerate().map(|(idx, app)| {
                 let app_for_launch = app.clone();
+                let app_for_open = app.clone();
                 let app_for_details = app.clone();
                 let subtitle = clean_app_description(&app);
+                let card_group = gpui::SharedString::from(format!("appcard-{}", idx));
+                let p = motion::entrance(
+                    ("app_card", idx),
+                    Spring::SPATIAL,
+                    (idx.min(12) as f32) * 0.03,
+                    window,
+                    cx,
+                );
 
                 div()
                     .id(("grid_app_card", idx))
-                    .w(px(272.))
-                    .h(px(176.))
+                    .group(card_group.clone())
+                    .relative()
+                    .top(px((1. - p) * 12.))
+                    .opacity(p.clamp(0., 1.))
+                    .w(px(300.))
+                    .h(px(184.))
                     .p(px(18.))
-                    .rounded(px(22.))
-                    .bg(rgb(0x201c2a))
-                    .hover(|h| h.bg(rgb(0x282136)).border_color(rgb(0x4d3d62)))
+                    .rounded(px(20.))
+                    .bg(glass_bg(&s))
+                    .hover(|h| {
+                        h.bg(glass_bg_high(&s))
+                            .border_color(s.outline)
+                            .shadow(glass_shadow_lift(&s))
+                    })
                     .border_1()
-                    .border_color(rgb(0x31273d))
+                    .border_color(s.outline_variant)
+                    .shadow(glass_shadow(&s))
                     .flex()
                     .flex_col()
                     .justify_between()
@@ -2080,25 +1700,28 @@ impl AppView {
                             this.launch_app(&a);
                         }
                     }))
-                    // Top row: App Icon (44x44) and Kebab Menu (⋮)
+                    // Top row: App Icon (52x52) and overflow menu
                     .child(
                         div()
                             .flex()
                             .items_start()
                             .justify_between()
-                            .child(render_app_icon(app.icon.as_ref(), &app.name, &s))
+                            .child(render_app_icon_sized(
+                                app.icon.as_ref(),
+                                &app.name,
+                                &s,
+                                52.,
+                            ))
                             .child(
                                 div()
                                     .id(("kebab_btn", idx))
-                                    .size(px(32.))
+                                    .size(px(30.))
                                     .rounded_full()
                                     .flex()
                                     .items_center()
                                     .justify_center()
-                                    .text_size(px(16.))
-                                    .text_color(rgb(0x8e859b))
-                                    .hover(|h| h.bg(rgb(0x352a45)).text_color(rgb(0xffffff)))
                                     .cursor_pointer()
+                                    .hover(|h| h.bg(s.surface_container_highest))
                                     .on_click(cx.listener({
                                         let a = app_for_details;
                                         move |this, _, _, cx| {
@@ -2106,7 +1729,11 @@ impl AppView {
                                             cx.notify();
                                         }
                                     }))
-                                    .child("⋮"),
+                                    .child(
+                                        Icon::new("more")
+                                            .size(px(16.))
+                                            .color(s.on_surface_variant),
+                                    ),
                             ),
                     )
                     // Middle: App Name & 2-Line Subtitle Description
@@ -2117,41 +1744,62 @@ impl AppView {
                             .gap_1()
                             .child(
                                 div()
-                                    .font_weight(FontWeight::BOLD)
-                                    .text_size(px(15.))
-                                    .text_color(rgb(0xffffff))
+                                    .font_weight(FontWeight::SEMIBOLD)
+                                    .text_size(px(14.5))
+                                    .text_color(s.on_surface)
                                     .truncate()
                                     .child(app.name.clone()),
                             )
                             .child(
                                 div()
-                                    .h(px(34.))
+                                    .h(px(32.))
                                     .text_size(px(12.))
-                                    .text_color(rgb(0x9a91a8))
+                                    .text_color(s.on_surface_variant)
                                     .overflow_hidden()
                                     .child(subtitle),
                             ),
                     )
-                    // Bottom: Source Badge Pill and Disk Size
+                    // Bottom: Source Badge + Size, hover-reveal Open action
                     .child(
                         div()
                             .flex()
                             .items_center()
                             .justify_between()
-                            .child(render_source_badge(&app.source))
-                            .when_some(app.installed_size, |row, sz| {
-                                if sz > 0 {
-                                    row.child(
-                                        div()
-                                            .text_size(px(11.5))
-                                            .font_weight(FontWeight::MEDIUM)
-                                            .text_color(rgb(0x9a91a8))
-                                            .child(format_file_size(sz)),
-                                    )
-                                } else {
-                                    row
-                                }
-                            }),
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap_2()
+                                    .child(render_source_badge(&app.source, s))
+                                    .when_some(app.installed_size, |row, sz| {
+                                        if sz > 0 {
+                                            row.child(
+                                                div()
+                                                    .text_size(px(11.5))
+                                                    .font_weight(FontWeight::MEDIUM)
+                                                    .text_color(s.on_surface_variant)
+                                                    .child(format_file_size(sz)),
+                                            )
+                                        } else {
+                                            row
+                                        }
+                                    }),
+                            )
+                            .child(
+                                div()
+                                    .invisible()
+                                    .group_hover(card_group, |h| h.visible())
+                                    .child(
+                                        Button::new(("open_card", idx), "Open")
+                                            .tonal()
+                                            .on_click(cx.listener({
+                                                let a = app_for_open;
+                                                move |this, _, _, _| {
+                                                    this.launch_app(&a);
+                                                }
+                                            })),
+                                    ),
+                            ),
                     )
             }))
     }
@@ -2162,135 +1810,121 @@ impl AppView {
         cx: &mut Context<Self>,
         s: Scheme,
     ) -> impl IntoElement {
+        let count = apps.len();
         div()
             .w_full()
+            .min_w_0()
+            .rounded(px(20.))
+            .bg(glass_bg(&s))
+            .border_1()
+            .border_color(s.outline_variant)
+            .shadow(glass_shadow(&s))
+            .overflow_hidden()
             .flex()
             .flex_col()
-            .gap_2p5()
-            .children(apps.into_iter().enumerate().map(|(idx, app)| {
-                let app_clone = app.clone();
-                let app_details = app.clone();
-                let subtitle = clean_app_description(&app);
-
+            .child(
                 div()
-                    .id(("list_app_row", idx))
-                    .py_3()
+                    .w_full()
                     .px_4()
-                    .rounded(px(18.))
-                    .bg(rgb(0x201c2a))
-                    .hover(|h| h.bg(rgb(0x282136)).border_color(rgb(0x4d3d62)))
-                    .border_1()
-                    .border_color(rgb(0x31273d))
+                    .py_2p5()
                     .flex()
                     .items_center()
-                    .justify_between()
-                    .gap_3()
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_3p5()
-                            .min_w_0()
-                            .child(render_app_icon(app.icon.as_ref(), &app.name, &s))
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .min_w_0()
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .gap_2p5()
-                                            .child(
-                                                div()
-                                                    .font_weight(FontWeight::BOLD)
-                                                    .text_size(px(14.5))
-                                                    .text_color(rgb(0xffffff))
-                                                    .child(app.name.clone()),
-                                            )
-                                            .child(render_source_badge(&app.source))
-                                            .when_some(app.installed_size, |row, sz| {
-                                                if sz > 0 {
-                                                    row.child(
-                                                        div()
-                                                            .text_size(px(11.5))
-                                                            .font_weight(FontWeight::MEDIUM)
-                                                            .text_color(rgb(0x9a91a8))
-                                                            .child(format_file_size(sz)),
-                                                    )
-                                                } else {
-                                                    row
-                                                }
-                                            }),
-                                    )
-                                    .child(
-                                        div()
-                                            .text_size(px(12.))
-                                            .text_color(rgb(0x9a91a8))
-                                            .truncate()
-                                            .child(subtitle),
-                                    ),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_2()
-                            .flex_shrink_0()
-                            .child(
-                                Button::new(("open_list", idx), "Launch")
-                                    .tonal()
-                                    .on_click(cx.listener({
-                                        let a = app.clone();
-                                        move |this, _, _, _| {
-                                            this.launch_app(&a);
-                                        }
-                                    })),
-                            )
-                            .child(
-                                IconButton::new(("info_list", idx), "brain")
-                                    .size(px(32.))
-                                    .tooltip("App Details & Paths")
-                                    .on_click(cx.listener({
-                                        let a = app_details;
-                                        move |this, _, _, cx| {
-                                            this.selected_app_details = Some(a.clone());
-                                            cx.notify();
-                                        }
-                                    })),
-                            )
-                            .when(app.install_path.is_some() || app.desktop_file.is_some(), |row| {
-                                row.child(
-                                    IconButton::new(("fol_list", idx), "folder")
-                                        .size(px(32.))
-                                        .tooltip("Reveal in Files")
-                                        .on_click(cx.listener({
-                                            let a = app.clone();
-                                            move |this, _, _, _| {
-                                                this.reveal_folder(&a);
-                                            }
-                                        })),
+                    .gap_4()
+                    .text_size(px(10.5))
+                    .font_weight(FontWeight::BOLD)
+                    .text_color(s.on_surface_variant)
+                    .child(div().w(px(44.)).flex_shrink_0())
+                    .child(div().flex_1().min_w_0().child("APPLICATION"))
+                    .child(div().w(px(88.)).flex_shrink_0().child("SOURCE"))
+                    .child(div().w(px(76.)).flex_shrink_0().child("SIZE"))
+                    .child(div().w(px(88.)).flex_shrink_0().child("ACTION")),
+            )
+            .children(apps.into_iter().enumerate().map(|(idx, app)| {
+                let details = app.clone();
+                let launch = app.clone();
+                let mut row =
+                    div()
+                        .id(("application_row", idx))
+                        .w_full()
+                        .min_h(px(72.))
+                        .px_4()
+                        .py_2p5()
+                        .hover(|h| h.bg(glass_bg_high(&s)))
+                        .cursor_pointer()
+                        .flex()
+                        .items_center()
+                        .gap_4()
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.selected_app_details = Some(details.clone());
+                            cx.notify();
+                        }))
+                        .child(render_app_icon_sized(app.icon.as_ref(), &app.name, &s, 46.))
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .flex()
+                                .flex_col()
+                                .gap_1()
+                                .child(
+                                    div()
+                                        .text_size(px(14.5))
+                                        .font_weight(FontWeight::SEMIBOLD)
+                                        .text_color(s.on_surface)
+                                        .truncate()
+                                        .child(app.name.clone()),
                                 )
-                            })
-                            .child(
-                                IconButton::new(("un_list", idx), "trash")
-                                    .size(px(32.))
-                                    .tooltip("Uninstall Application")
-                                    .on_click(cx.listener({
-                                        let a = app_clone;
-                                        move |this, _, _, cx| {
-                                            this.prepare_uninstall(a.clone(), cx);
-                                        }
-                                    })),
-                            ),
-                    )
+                                .child(
+                                    div()
+                                        .text_size(px(12.))
+                                        .text_color(s.on_surface_variant)
+                                        .truncate()
+                                        .child(clean_app_description(&app)),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .w(px(88.))
+                                .flex_shrink_0()
+                                .child(render_source_badge(&app.source, s)),
+                        )
+                        .child(
+                            div()
+                                .w(px(76.))
+                                .flex_shrink_0()
+                                .text_size(px(12.))
+                                .text_color(s.on_surface_variant)
+                                .child(
+                                    app.installed_size
+                                        .filter(|size| *size > 0)
+                                        .map(format_file_size)
+                                        .unwrap_or_else(|| "—".to_string()),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .w(px(88.))
+                                .flex_shrink_0()
+                                .flex()
+                                .justify_end()
+                                .child(
+                                    Button::new(("launch_row", idx), "Launch")
+                                        .tonal()
+                                        .on_click(cx.listener(move |this, _, _, _| {
+                                            this.launch_app(&launch)
+                                        })),
+                                ),
+                        );
+                if idx + 1 < count {
+                    row = row.border_b_1().border_color(s.outline_variant);
+                }
+                row
             }))
     }
 
     fn render_app_details_modal(
         &self,
+        window: &mut Window,
         app: InstalledApp,
         cx: &mut Context<Self>,
         s: Scheme,
@@ -2298,22 +1932,27 @@ impl AppView {
         let app_for_uninstall = app.clone();
         let app_for_launch = app.clone();
         let app_for_folder = app.clone();
+        let p = motion::entrance("app_details_modal", Spring::SPATIAL_FAST, 0., window, cx);
 
         div()
             .absolute()
             .inset_0()
-            .bg(s.scrim)
+            .bg(alpha(s.scrim, 0.45))
             .flex()
             .items_center()
             .justify_center()
             .child(
                 div()
+                    .relative()
+                    .top(px((1. - p) * 16.))
+                    .opacity(p.clamp(0., 1.))
                     .w(px(520.))
                     .p_6()
-                    .rounded(px(24.))
+                    .rounded(px(20.))
                     .bg(s.surface_container_high)
                     .border_1()
                     .border_color(s.outline_variant)
+                    .shadow(glass_shadow(&s))
                     .flex()
                     .flex_col()
                     .gap_5()
@@ -2347,23 +1986,14 @@ impl AppView {
                                             ),
                                     ),
                             )
-                            .child(
-                                Chip::new("detail_src", app.source.label())
-                                    .tone(match app.source {
-                                        AppSource::InstallXs => gpui_m3::Tone::Primary,
-                                        AppSource::AppImage => gpui_m3::Tone::Primary,
-                                        AppSource::Flatpak => gpui_m3::Tone::Secondary,
-                                        AppSource::Aur => gpui_m3::Tone::Tertiary,
-                                        _ => gpui_m3::Tone::Secondary,
-                                    }),
-                            ),
+                            .child(render_source_badge(&app.source, s)),
                     )
                     // File Paths & Details Box
                     .child(
                         div()
                             .p_4()
                             .rounded(px(14.))
-                            .bg(s.surface_container)
+                            .bg(glass_bg_high(&s))
                             .flex()
                             .flex_col()
                             .gap_3()
@@ -2480,7 +2110,7 @@ impl AppView {
             )
     }
 
-    fn render_updates_view(&self, cx: &mut Context<Self>, _s: Scheme) -> impl IntoElement {
+    fn render_updates_view(&self, cx: &mut Context<Self>, s: Scheme) -> impl IntoElement {
         let count = self.available_updates.len();
         let is_checking = self.is_checking_updates;
         let updating_pkg = self.updating_pkg.clone();
@@ -2491,106 +2121,56 @@ impl AppView {
             .flex_col()
             .gap_6()
             .pb_10()
-            // Header card
-            .child(
-                div()
-                    .w_full()
-                    .p_6()
-                    .rounded(px(24.))
-                    .bg(rgb(0x201c2a))
-                    .border_1()
-                    .border_color(rgb(0x31273d))
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_4()
-                            .child(
-                                div()
-                                    .size(px(52.))
-                                    .rounded(px(16.))
-                                    .bg(rgb(0x2f2540))
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .text_size(px(24.))
-                                    .child("🔄"),
+            .child(render_page_heading(
+                "Updates",
+                format!("{} package updates are available", count),
+                Some(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_3()
+                        .child(
+                            Button::new("btn_check_updates", if is_checking { "Checking..." } else { "Check for updates" })
+                                .tonal()
+                                .on_click(cx.listener(|this, _, _, cx| this.check_updates(cx))),
+                        )
+                        .when(count > 0, |row| {
+                            row.child(
+                                Button::new("btn_update_all", format!("Update all ({count})"))
+                                    .filled()
+                                    .on_click(cx.listener(|this, _, _, cx| this.update_all_packages(cx))),
                             )
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .gap_1()
-                                    .child(
-                                        div()
-                                            .font_weight(FontWeight::BOLD)
-                                            .text_size(px(20.))
-                                            .text_color(rgb(0xffffff))
-                                            .child("System & Package Updates"),
-                                    )
-                                    .child(
-                                        div()
-                                            .text_size(px(13.))
-                                            .text_color(rgb(0x9a91a8))
-                                            .child(format!(
-                                                "Arch Linux Packages, AUR, & Flatpaks • {} updates available",
-                                                count
-                                            )),
-                                    ),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_3()
-                            .child(
-                                Button::new("btn_check_updates", if is_checking { "Checking..." } else { "Check Updates" })
-                                    .tonal()
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.check_updates(cx);
-                                    })),
-                            )
-                            .when(count > 0, |row| {
-                                row.child(
-                                    Button::new("btn_update_all", format!("Update All ({})", count))
-                                        .filled()
-                                        .on_click(cx.listener(|this, _, _, cx| {
-                                            this.update_all_packages(cx);
-                                        })),
-                                )
-                            }),
-                    ),
-            )
+                        })
+                        .into_any_element(),
+                ),
+                s,
+            ))
             // Body: Updates List or "All Up to Date" Banner
             .child(if count == 0 {
                 div()
                     .w_full()
                     .p_12()
-                    .rounded(px(24.))
-                    .bg(rgb(0x181520))
+                    .rounded(px(20.))
+                    .bg(glass_bg(&s))
                     .border_1()
-                    .border_color(rgb(0x272132))
+                    .border_color(s.outline_variant)
                     .flex()
                     .flex_col()
                     .items_center()
                     .justify_center()
                     .gap_3()
-                    .child(div().text_size(px(48.)).child("✨"))
+                    .child(Icon::new("check").size(px(36.)).color(s.success))
                     .child(
                         div()
                             .font_weight(FontWeight::BOLD)
                             .text_size(px(17.))
-                            .text_color(rgb(0xffffff))
+                            .text_color(s.on_surface)
                             .child("All Packages are Up to Date!"),
                     )
                     .child(
                         div()
                             .text_size(px(13.))
-                            .text_color(rgb(0x9a91a8))
+                            .text_color(s.on_surface_variant)
                             .child("Your Arch Linux packages, Flatpaks, and AUR software have no pending updates."),
                     )
                     .into_any_element()
@@ -2604,21 +2184,22 @@ impl AppView {
                         let update_clone = u.clone();
                         let is_this_updating = updating_pkg.as_deref() == Some(&u.package_name);
 
-                        let (badge_bg, badge_fg, source_str) = match u.source {
-                            AppSource::Pacman => (rgb(0x193322), rgb(0xa2e8bd), "Pacman"),
-                            AppSource::Aur => (rgb(0x182840), rgb(0xa2cafe), "AUR"),
-                            AppSource::Flatpak => (rgb(0x2d2140), rgb(0xd0bdff), "Flatpak"),
-                            _ => (rgb(0x262132), rgb(0xcac4d0), "System"),
+                        let source_str = match u.source {
+                            AppSource::Pacman => "Pacman",
+                            AppSource::Aur => "AUR",
+                            AppSource::Flatpak => "Flatpak",
+                            _ => "System",
                         };
 
                         div()
                             .id(("update_row", idx))
                             .w_full()
                             .p_4()
-                            .rounded(px(18.))
-                            .bg(rgb(0x201c2a))
+                            .rounded(px(14.))
+                            .bg(glass_bg_high(&s))
                             .border_1()
-                            .border_color(rgb(0x31273d))
+                            .border_color(s.outline_variant)
+                            .shadow(glass_shadow(&s))
                             .flex()
                             .items_center()
                             .justify_between()
@@ -2632,8 +2213,8 @@ impl AppView {
                                             .px_2p5()
                                             .py_1()
                                             .rounded_full()
-                                            .bg(badge_bg)
-                                            .text_color(badge_fg)
+                                            .bg(s.secondary_container)
+                                            .text_color(s.on_secondary_container)
                                             .text_size(px(11.))
                                             .font_weight(FontWeight::BOLD)
                                             .child(source_str),
@@ -2647,7 +2228,7 @@ impl AppView {
                                                 div()
                                                     .font_weight(FontWeight::BOLD)
                                                     .text_size(px(15.))
-                                                    .text_color(rgb(0xffffff))
+                                                    .text_color(s.on_surface)
                                                     .child(u.package_name.clone()),
                                             )
                                             .child(
@@ -2658,13 +2239,13 @@ impl AppView {
                                                     .text_size(px(12.5))
                                                     .child(
                                                         div()
-                                                            .text_color(rgb(0x8e859b))
+                                                            .text_color(s.on_surface_variant)
                                                             .child(u.current_version.clone()),
                                                     )
-                                                    .child(div().text_color(rgb(0x6e657a)).child("→"))
+                                                    .child(div().text_color(s.on_surface_variant).child("→"))
                                                     .child(
                                                         div()
-                                                            .text_color(rgb(0x9ece6a))
+                                                            .text_color(s.success)
                                                             .font_weight(FontWeight::MEDIUM)
                                                             .child(u.new_version.clone()),
                                                     ),
@@ -2686,7 +2267,7 @@ impl AppView {
             })
     }
 
-    fn render_discover_view(&self, cx: &mut Context<Self>, _s: Scheme) -> impl IntoElement {
+    fn render_discover_view(&self, cx: &mut Context<Self>, s: Scheme) -> impl IntoElement {
         let installing_id = self.installing_store_pkg.clone();
         let is_searching = self.is_searching_store;
 
@@ -2696,69 +2277,20 @@ impl AppView {
             .flex_col()
             .gap_6()
             .pb_10()
-            // Header Hero Banner
-            .child(
-                div()
-                    .w_full()
-                    .p_6()
-                    .rounded(px(24.))
-                    .bg(rgb(0x201c2a))
-                    .border_1()
-                    .border_color(rgb(0x31273d))
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_4()
-                            .child(
-                                div()
-                                    .size(px(52.))
-                                    .rounded(px(16.))
-                                    .bg(rgb(0x2f2540))
-                                    .flex()
-                                    .items_center()
-                                    .justify_center()
-                                    .text_size(px(24.))
-                                    .child("🌐"),
-                            )
-                            .child(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .gap_1()
-                                    .child(
-                                        div()
-                                            .font_weight(FontWeight::BOLD)
-                                            .text_size(px(20.))
-                                            .text_color(rgb(0xffffff))
-                                            .child("Discover & App Store"),
-                                    )
-                                    .child(
-                                        div()
-                                            .text_size(px(13.))
-                                            .text_color(rgb(0x9a91a8))
-                                            .child("Search and 1-click install community packages from AUR & Flatpak"),
-                                    ),
-                            ),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_2()
-                            .child(
-                                Button::new("discover_featured_btn", "Featured Apps")
-                                    .tonal()
-                                    .on_click(cx.listener(|this, _, _, cx| {
-                                        this.store_packages = store::get_featured_store_packages();
-                                        cx.notify();
-                                    })),
-                            ),
-                    ),
-            )
+            .child(render_page_heading(
+                "Discover",
+                "Find applications in Flathub, the AUR, and AppImageHub.",
+                Some(
+                    Button::new("discover_featured_btn", "Featured apps")
+                        .tonal()
+                        .on_click(cx.listener(|this, _, _, cx| {
+                            this.store_packages = store::get_featured_store_packages();
+                            cx.notify();
+                        }))
+                        .into_any_element(),
+                ),
+                s,
+            ))
             // Quick Search Suggestion Pills
             .child(
                 div()
@@ -2766,20 +2298,25 @@ impl AppView {
                     .items_center()
                     .gap_2()
                     .flex_wrap()
-                    .child(div().text_size(px(12.5)).text_color(rgb(0x7c758a)).child("Popular:"))
+                    .child(
+                        div()
+                            .text_size(px(12.5))
+                            .text_color(s.on_surface_variant)
+                            .child("Popular:"),
+                    )
                     .child(
                         div()
                             .id("pop_spotify")
                             .px_3()
                             .py_1()
                             .rounded_full()
-                            .bg(rgb(0x201c2a))
+                            .bg(glass_bg_high(&s))
                             .border_1()
-                            .border_color(rgb(0x31273d))
-                            .hover(|h| h.bg(rgb(0x2a2438)))
+                            .border_color(s.outline_variant)
+                            .hover(|h| h.bg(s.surface_container_high))
                             .cursor_pointer()
                             .text_size(px(12.))
-                            .text_color(rgb(0xcfbcff))
+                            .text_color(s.primary)
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.search_store_packages("spotify", cx);
                             }))
@@ -2791,13 +2328,13 @@ impl AppView {
                             .px_3()
                             .py_1()
                             .rounded_full()
-                            .bg(rgb(0x201c2a))
+                            .bg(glass_bg_high(&s))
                             .border_1()
-                            .border_color(rgb(0x31273d))
-                            .hover(|h| h.bg(rgb(0x2a2438)))
+                            .border_color(s.outline_variant)
+                            .hover(|h| h.bg(s.surface_container_high))
                             .cursor_pointer()
                             .text_size(px(12.))
-                            .text_color(rgb(0xcfbcff))
+                            .text_color(s.primary)
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.search_store_packages("discord", cx);
                             }))
@@ -2809,13 +2346,13 @@ impl AppView {
                             .px_3()
                             .py_1()
                             .rounded_full()
-                            .bg(rgb(0x201c2a))
+                            .bg(glass_bg_high(&s))
                             .border_1()
-                            .border_color(rgb(0x31273d))
-                            .hover(|h| h.bg(rgb(0x2a2438)))
+                            .border_color(s.outline_variant)
+                            .hover(|h| h.bg(s.surface_container_high))
                             .cursor_pointer()
                             .text_size(px(12.))
-                            .text_color(rgb(0xcfbcff))
+                            .text_color(s.primary)
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.search_store_packages("code", cx);
                             }))
@@ -2827,13 +2364,13 @@ impl AppView {
                             .px_3()
                             .py_1()
                             .rounded_full()
-                            .bg(rgb(0x201c2a))
+                            .bg(glass_bg_high(&s))
                             .border_1()
-                            .border_color(rgb(0x31273d))
-                            .hover(|h| h.bg(rgb(0x2a2438)))
+                            .border_color(s.outline_variant)
+                            .hover(|h| h.bg(s.surface_container_high))
                             .cursor_pointer()
                             .text_size(px(12.))
-                            .text_color(rgb(0xcfbcff))
+                            .text_color(s.primary)
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.search_store_packages("obsidian", cx);
                             }))
@@ -2845,13 +2382,13 @@ impl AppView {
                             .px_3()
                             .py_1()
                             .rounded_full()
-                            .bg(rgb(0x201c2a))
+                            .bg(glass_bg_high(&s))
                             .border_1()
-                            .border_color(rgb(0x31273d))
-                            .hover(|h| h.bg(rgb(0x2a2438)))
+                            .border_color(s.outline_variant)
+                            .hover(|h| h.bg(s.surface_container_high))
                             .cursor_pointer()
                             .text_size(px(12.))
-                            .text_color(rgb(0xcfbcff))
+                            .text_color(s.primary)
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.search_store_packages("steam", cx);
                             }))
@@ -2866,7 +2403,7 @@ impl AppView {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .text_color(rgb(0xcfbcff))
+                    .text_color(s.primary)
                     .text_size(px(15.))
                     .child("Searching AUR & Flathub packages...")
                     .into_any_element()
@@ -2879,19 +2416,21 @@ impl AppView {
                     .items_center()
                     .justify_center()
                     .gap_3()
-                    .child(div().text_size(px(40.)).child("📦"))
+                    .child(Icon::new("box").size(px(32.)).color(s.on_surface_variant))
                     .child(
                         div()
                             .font_weight(FontWeight::BOLD)
                             .text_size(px(16.))
-                            .text_color(rgb(0xffffff))
+                            .text_color(s.on_surface)
                             .child("No matching packages found"),
                     )
                     .child(
                         div()
                             .text_size(px(13.))
-                            .text_color(rgb(0x9a91a8))
-                            .child("Try searching by package name or keyword in the top search bar."),
+                            .text_color(s.on_surface_variant)
+                            .child(
+                                "Try searching by package name or keyword in the top search bar.",
+                            ),
                     )
                     .into_any_element()
             } else {
@@ -2905,10 +2444,10 @@ impl AppView {
                         let is_installing = installing_id.as_deref() == Some(&pkg.id);
                         let is_installed = pkg.is_installed;
 
-                        let (badge_bg, badge_fg, source_label) = match pkg.source {
-                            crate::models::StoreSource::Aur => (rgb(0x182840), rgb(0xa2cafe), "AUR"),
-                            crate::models::StoreSource::Flathub => (rgb(0x2d2140), rgb(0xd0bdff), "Flathub"),
-                            crate::models::StoreSource::AppImageHub => (rgb(0x351f4c), rgb(0xdfb2fe), "AppImage"),
+                        let source_label = match pkg.source {
+                            crate::models::StoreSource::Aur => "AUR",
+                            crate::models::StoreSource::Flathub => "Flathub",
+                            crate::models::StoreSource::AppImageHub => "AppImage",
                         };
 
                         div()
@@ -2916,11 +2455,16 @@ impl AppView {
                             .w(px(272.))
                             .h(px(180.))
                             .p(px(18.))
-                            .rounded(px(22.))
-                            .bg(rgb(0x201c2a))
+                            .rounded(px(20.))
+                            .bg(glass_bg_high(&s))
                             .border_1()
-                            .border_color(rgb(0x31273d))
-                            .hover(|h| h.bg(rgb(0x282136)).border_color(rgb(0x4d3d62)))
+                            .border_color(s.outline_variant)
+                            .shadow(glass_shadow(&s))
+                            .hover(|h| {
+                                h.bg(s.surface_container_high)
+                                    .border_color(s.outline)
+                                    .shadow(glass_shadow_lift(&s))
+                            })
                             .flex()
                             .flex_col()
                             .justify_between()
@@ -2935,8 +2479,8 @@ impl AppView {
                                             .px_2p5()
                                             .py_0p5()
                                             .rounded_full()
-                                            .bg(badge_bg)
-                                            .text_color(badge_fg)
+                                            .bg(s.secondary_container)
+                                            .text_color(s.on_secondary_container)
                                             .text_size(px(10.5))
                                             .font_weight(FontWeight::BOLD)
                                             .child(source_label),
@@ -2945,80 +2489,106 @@ impl AppView {
                                         el.child(
                                             div()
                                                 .text_size(px(11.))
-                                                .text_color(rgb(0x8e859b))
+                                                .text_color(s.on_surface_variant)
                                                 .child(ver.clone()),
                                         )
                                     }),
                             )
-                            // Middle: Package Title & Summary
+                            // Middle: Package icon, Title & Summary
                             .child(
                                 div()
                                     .flex()
-                                    .flex_col()
-                                    .gap_1()
+                                    .items_start()
+                                    .gap_3()
                                     .child(
                                         div()
+                                            .size(px(44.))
+                                            .rounded(px(13.))
+                                            .bg(s.primary_container)
+                                            .border_1()
+                                            .border_color(s.outline_variant)
+                                            .flex()
+                                            .items_center()
+                                            .justify_center()
+                                            .flex_shrink_0()
+                                            .text_color(s.on_primary_container)
                                             .font_weight(FontWeight::BOLD)
-                                            .text_size(px(15.))
-                                            .text_color(rgb(0xffffff))
-                                            .truncate()
-                                            .child(pkg.name.clone()),
+                                            .text_size(px(17.))
+                                            .child(
+                                                pkg.name
+                                                    .chars()
+                                                    .next()
+                                                    .unwrap_or('A')
+                                                    .to_uppercase()
+                                                    .to_string(),
+                                            ),
                                     )
                                     .child(
                                         div()
-                                            .h(px(36.))
-                                            .text_size(px(12.))
-                                            .text_color(rgb(0x9a91a8))
-                                            .overflow_hidden()
-                                            .child(pkg.summary.clone()),
+                                            .flex()
+                                            .flex_col()
+                                            .gap_1()
+                                            .min_w_0()
+                                            .child(
+                                                div()
+                                                    .font_weight(FontWeight::BOLD)
+                                                    .text_size(px(15.))
+                                                    .text_color(s.on_surface)
+                                                    .truncate()
+                                                    .child(pkg.name.clone()),
+                                            )
+                                            .child(
+                                                div()
+                                                    .h(px(36.))
+                                                    .text_size(px(12.))
+                                                    .text_color(s.on_surface_variant)
+                                                    .overflow_hidden()
+                                                    .child(pkg.summary.clone()),
+                                            ),
                                     ),
                             )
                             // Bottom Action: Install / Installed button
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .justify_end()
-                                    .child(if is_installed {
-                                        div()
-                                            .px_3()
-                                            .py_1()
-                                            .rounded_full()
-                                            .bg(rgb(0x193322))
-                                            .text_color(rgb(0xa2e8bd))
-                                            .text_size(px(11.5))
-                                            .font_weight(FontWeight::BOLD)
-                                            .child("✓ Installed")
-                                            .into_any_element()
-                                    } else if is_installing {
-                                        div()
-                                            .px_3()
-                                            .py_1()
-                                            .rounded_full()
-                                            .bg(rgb(0x2f2540))
-                                            .text_color(rgb(0xcfbcff))
-                                            .text_size(px(11.5))
-                                            .font_weight(FontWeight::BOLD)
-                                            .child("Installing...")
-                                            .into_any_element()
-                                    } else {
-                                        Button::new(("btn_store_inst", idx), "Install")
-                                            .filled()
-                                            .on_click(cx.listener({
-                                                let p = pkg_clone;
-                                                move |this, _, _, cx| {
-                                                    this.install_from_store(p.clone(), cx);
-                                                }
-                                            }))
-                                            .into_any_element()
-                                    }),
-                            )
+                            .child(div().flex().items_center().justify_end().child(
+                                if is_installed {
+                                    div()
+                                        .px_3()
+                                        .py_1()
+                                        .rounded_full()
+                                        .bg(s.secondary_container)
+                                        .text_color(s.on_secondary_container)
+                                        .text_size(px(11.5))
+                                        .font_weight(FontWeight::BOLD)
+                                        .child("✓ Installed")
+                                        .into_any_element()
+                                } else if is_installing {
+                                    div()
+                                        .px_3()
+                                        .py_1()
+                                        .rounded_full()
+                                        .bg(s.surface_container_high)
+                                        .text_color(s.primary)
+                                        .text_size(px(11.5))
+                                        .font_weight(FontWeight::BOLD)
+                                        .child("Installing...")
+                                        .into_any_element()
+                                } else {
+                                    Button::new(("btn_store_inst", idx), "Install")
+                                        .filled()
+                                        .on_click(cx.listener({
+                                            let p = pkg_clone;
+                                            move |this, _, _, cx| {
+                                                this.install_from_store(p.clone(), cx);
+                                            }
+                                        }))
+                                        .into_any_element()
+                                },
+                            ))
                     }))
                     .into_any_element()
             })
     }
 
-    fn render_settings_view(&self, cx: &mut Context<Self>, _s: Scheme) -> impl IntoElement {
+    fn render_settings_view(&self, cx: &mut Context<Self>, s: Scheme) -> impl IntoElement {
         let backup_msg = self.backup_status.clone();
         let is_dark = self.dark_mode;
 
@@ -3028,58 +2598,22 @@ impl AppView {
             .flex_col()
             .gap_6()
             .pb_10()
-            // Header Card
-            .child(
-                div()
-                    .w_full()
-                    .p_6()
-                    .rounded(px(24.))
-                    .bg(rgb(0x201c2a))
-                    .border_1()
-                    .border_color(rgb(0x31273d))
-                    .flex()
-                    .items_center()
-                    .gap_4()
-                    .child(
-                        div()
-                            .size(px(52.))
-                            .rounded(px(16.))
-                            .bg(rgb(0x2f2540))
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .text_size(px(24.))
-                            .child("⚙️"),
-                    )
-                    .child(
-                        div()
-                            .flex()
-                            .flex_col()
-                            .gap_1()
-                            .child(
-                                div()
-                                    .font_weight(FontWeight::BOLD)
-                                    .text_size(px(20.))
-                                    .text_color(rgb(0xffffff))
-                                    .child("Settings & Machine Maintenance"),
-                            )
-                            .child(
-                                div()
-                                    .text_size(px(13.))
-                                    .text_color(rgb(0x9a91a8))
-                                    .child("System backup, deep cleaner settings, and integration status"),
-                            ),
-                    ),
-            )
+            .child(render_page_heading(
+                "Settings",
+                "Manage backups, application cleanup, system integration, and appearance.",
+                None,
+                s,
+            ))
             // Section 1: Backup & Migration
             .child(
                 div()
                     .w_full()
                     .p_6()
                     .rounded(px(20.))
-                    .bg(rgb(0x1a1624))
+                    .bg(glass_bg(&s))
                     .border_1()
-                    .border_color(rgb(0x2c2438))
+                    .border_color(s.outline_variant)
+                    .shadow(glass_shadow(&s))
                     .flex()
                     .flex_col()
                     .gap_3()
@@ -3087,13 +2621,13 @@ impl AppView {
                         div()
                             .font_weight(FontWeight::BOLD)
                             .text_size(px(16.))
-                            .text_color(rgb(0xffffff))
-                            .child("📦 Machine Migration & App Backup"),
+                            .text_color(s.on_surface)
+                                            .child(render_setting_section_title("Machine migration & backup", "export", s)),
                     )
                     .child(
                         div()
                             .text_size(px(13.))
-                            .text_color(rgb(0x9a91a8))
+                            .text_color(s.on_surface_variant)
                             .child("Export all your installed applications across Pacman, AUR, Flatpak, and AppImages into a portable JSON manifest and automated bash restore script for new Arch machines."),
                     )
                     .child(
@@ -3114,7 +2648,7 @@ impl AppView {
                                     div()
                                         .text_size(px(12.5))
                                         .font_weight(FontWeight::MEDIUM)
-                                        .text_color(rgb(0x9ece6a))
+                                        .text_color(s.success)
                                         .child(msg),
                                 )
                             }),
@@ -3126,9 +2660,10 @@ impl AppView {
                     .w_full()
                     .p_6()
                     .rounded(px(20.))
-                    .bg(rgb(0x1a1624))
+                    .bg(glass_bg(&s))
                     .border_1()
-                    .border_color(rgb(0x2c2438))
+                    .border_color(s.outline_variant)
+                    .shadow(glass_shadow(&s))
                     .flex()
                     .flex_col()
                     .gap_3()
@@ -3136,13 +2671,13 @@ impl AppView {
                         div()
                             .font_weight(FontWeight::BOLD)
                             .text_size(px(16.))
-                            .text_color(rgb(0xffffff))
-                            .child("🧹 Deep AppCleaner Inspection"),
+                            .text_color(s.on_surface)
+                                            .child(render_setting_section_title("Deep app cleanup", "trash", s)),
                     )
                     .child(
                         div()
                             .text_size(px(13.))
-                            .text_color(rgb(0x9a91a8))
+                            .text_color(s.on_surface_variant)
                             .child("When uninstalling any application, InstallXS scans for orphaned residual files in ~/.config, ~/.cache, ~/.local/share, and ~/.var/app to free storage and keep your system pristine."),
                     )
                     .child(
@@ -3156,8 +2691,8 @@ impl AppView {
                                     .px_3()
                                     .py_1()
                                     .rounded_full()
-                                    .bg(rgb(0x193322))
-                                    .text_color(rgb(0xa2e8bd))
+                                    .bg(s.secondary_container)
+                                    .text_color(s.on_secondary_container)
                                     .text_size(px(11.5))
                                     .font_weight(FontWeight::BOLD)
                                     .child("✓ Residual Detection Active"),
@@ -3170,9 +2705,10 @@ impl AppView {
                     .w_full()
                     .p_6()
                     .rounded(px(20.))
-                    .bg(rgb(0x1a1624))
+                    .bg(glass_bg(&s))
                     .border_1()
-                    .border_color(rgb(0x2c2438))
+                    .border_color(s.outline_variant)
+                    .shadow(glass_shadow(&s))
                     .flex()
                     .flex_col()
                     .gap_3()
@@ -3180,13 +2716,13 @@ impl AppView {
                         div()
                             .font_weight(FontWeight::BOLD)
                             .text_size(px(16.))
-                            .text_color(rgb(0xffffff))
-                            .child("🔗 FreeDesktop & MIME Associations"),
+                            .text_color(s.on_surface)
+                                            .child(render_setting_section_title("Desktop integration", "plug", s)),
                     )
                     .child(
                         div()
                             .text_size(px(13.))
-                            .text_color(rgb(0x9a91a8))
+                            .text_color(s.on_surface_variant)
                             .child("InstallXS is registered as the system handler for .AppImage, .tar.gz, .deb, and .zip application archives."),
                     )
                     .child(
@@ -3211,9 +2747,10 @@ impl AppView {
                     .w_full()
                     .p_6()
                     .rounded(px(20.))
-                    .bg(rgb(0x1a1624))
+                    .bg(glass_bg(&s))
                     .border_1()
-                    .border_color(rgb(0x2c2438))
+                    .border_color(s.outline_variant)
+                    .shadow(glass_shadow(&s))
                     .flex()
                     .items_center()
                     .justify_between()
@@ -3226,14 +2763,14 @@ impl AppView {
                                 div()
                                     .font_weight(FontWeight::BOLD)
                                     .text_size(px(16.))
-                                    .text_color(rgb(0xffffff))
-                                    .child("🎨 Color Scheme & Appearance"),
+                                    .text_color(s.on_surface)
+                                    .child(render_setting_section_title("Appearance", "palette", s)),
                             )
                             .child(
                                 div()
                                     .text_size(px(13.))
-                                    .text_color(rgb(0x9a91a8))
-                                    .child(if is_dark { "Material 3 Dark Theme (Default)" } else { "Material 3 Light Theme" }),
+                                    .text_color(s.on_surface_variant)
+                                    .child(if is_dark { "Dark appearance" } else { "Light appearance" }),
                             ),
                     )
                     .child(
@@ -3248,6 +2785,7 @@ impl AppView {
 
     fn render_uninstall_modal(
         &self,
+        window: &mut Window,
         app: InstalledApp,
         cx: &mut Context<Self>,
         s: Scheme,
@@ -3258,34 +2796,41 @@ impl AppView {
         let residuals_opt = self.uninstall_residuals.as_ref();
         let selected_indices = &self.selected_residual_indices;
 
-        let total_freed_bytes: u64 = residuals_opt.map(|res| {
-            res.targets
-                .iter()
-                .enumerate()
-                .filter(|(idx, _)| selected_indices.contains(idx))
-                .map(|(_, t)| t.size_bytes)
-                .sum()
-        }).unwrap_or(0);
+        let total_freed_bytes: u64 = residuals_opt
+            .map(|res| {
+                res.targets
+                    .iter()
+                    .enumerate()
+                    .filter(|(idx, _)| selected_indices.contains(idx))
+                    .map(|(_, t)| t.size_bytes)
+                    .sum()
+            })
+            .unwrap_or(0);
 
         let targets = residuals_opt.map(|r| r.targets.clone()).unwrap_or_default();
         let has_residuals = !targets.is_empty();
+        let p = motion::entrance("uninstall_modal", Spring::SPATIAL_FAST, 0., window, cx);
 
         div()
             .absolute()
             .inset_0()
-            .bg(s.scrim)
+            .bg(alpha(s.scrim, 0.45))
             .flex()
             .items_center()
             .justify_center()
             .child(
                 div()
+                    .relative()
+                    .top(px((1. - p) * 16.))
+                    .opacity(p.clamp(0., 1.))
                     .w(px(540.))
                     .max_h(px(600.))
                     .p_6()
-                    .rounded(px(24.))
-                    .bg(rgb(0x201c2a))
+                    .rounded(px(20.))
+                    .bg(glass_bg_high(&s))
                     .border_1()
-                    .border_color(rgb(0x3d324f))
+                    .border_color(s.outline_variant)
+                    .shadow(glass_shadow(&s))
                     .flex()
                     .flex_col()
                     .gap_4()
@@ -3304,12 +2849,11 @@ impl AppView {
                                         div()
                                             .size(px(44.))
                                             .rounded(px(14.))
-                                            .bg(rgb(0x3d1d28))
+                                            .bg(s.error_container)
                                             .flex()
                                             .items_center()
                                             .justify_center()
-                                            .text_size(px(22.))
-                                            .child("🧹"),
+                                            .child(Icon::new("trash").size(px(22.)).color(s.on_error_container)),
                                     )
                                     .child(
                                         div()
@@ -3320,13 +2864,13 @@ impl AppView {
                                                 div()
                                                     .text_size(px(18.))
                                                     .font_weight(FontWeight::BOLD)
-                                                    .text_color(rgb(0xffffff))
+                                                    .text_color(s.on_surface)
                                                     .child(format!("Deep Clean: {}", app.name)),
                                             )
                                             .child(
                                                 div()
                                                     .text_size(px(12.5))
-                                                    .text_color(rgb(0x9a91a8))
+                                                    .text_color(s.on_surface_variant)
                                                     .child(if is_managed {
                                                         format!("Managed app • {} manifest files tracked", file_count)
                                                     } else {
@@ -3341,12 +2885,12 @@ impl AppView {
                                         .px_3()
                                         .py_1()
                                         .rounded_full()
-                                        .bg(rgb(0x2d1a38))
+                                        .bg(s.error_container)
                                         .border_1()
-                                        .border_color(rgb(0x57366b))
+                                        .border_color(s.outline)
                                         .text_size(px(12.))
                                         .font_weight(FontWeight::BOLD)
-                                        .text_color(rgb(0xdfb2fe))
+                                        .text_color(s.on_error_container)
                                         .child(format!("Reclaim: {}", format_file_size(total_freed_bytes))),
                                 )
                             }),
@@ -3355,7 +2899,7 @@ impl AppView {
                     .child(
                         div()
                             .text_size(px(13.))
-                            .text_color(rgb(0xcac4d0))
+                            .text_color(s.on_surface_variant)
                             .child(if has_residuals {
                                 "InstallXS detected leftover configuration, cache, and state files. Select the items you wish to purge:"
                             } else {
@@ -3374,10 +2918,10 @@ impl AppView {
                                 .flex_col()
                                 .gap_2()
                                 .p_2()
-                                .rounded(px(16.))
-                                .bg(rgb(0x16131d))
+                                .rounded(px(20.))
+                                .bg(glass_bg(&s))
                                 .border_1()
-                                .border_color(rgb(0x2c2438))
+                                .border_color(s.outline_variant)
                                 .children(targets.into_iter().enumerate().map(|(idx, target)| {
                                     let is_checked = selected_indices.contains(&idx);
                                     let path_display = target.path.to_string_lossy().to_string();
@@ -3388,10 +2932,10 @@ impl AppView {
                                         .w_full()
                                         .p_2p5()
                                         .rounded(px(12.))
-                                        .bg(if is_checked { rgb(0x261e33) } else { rgb(0x1c1824) })
+                                        .bg(if is_checked { s.secondary_container } else { s.surface_container_low })
                                         .border_1()
-                                        .border_color(if is_checked { rgb(0x483a5e) } else { rgb(0x272132) })
-                                        .hover(|h| h.bg(rgb(0x2f2540)))
+                                        .border_color(if is_checked { s.outline } else { s.outline_variant })
+                                        .hover(|h| h.bg(s.surface_container_high))
                                         .cursor_pointer()
                                         .flex()
                                         .items_center()
@@ -3415,13 +2959,13 @@ impl AppView {
                                                         .size(px(18.))
                                                         .rounded(px(5.))
                                                         .border_1()
-                                                        .border_color(if is_checked { rgb(0xcfbcff) } else { rgb(0x5e566b) })
-                                                        .bg(if is_checked { rgb(0xcfbcff) } else { rgb(0x16131d) })
+                                                        .border_color(if is_checked { s.primary } else { s.outline })
+                                                        .bg(if is_checked { s.primary } else { s.surface_container })
                                                         .flex()
                                                         .items_center()
                                                         .justify_center()
                                                         .text_size(px(11.))
-                                                        .text_color(rgb(0x1e1035))
+                                                        .text_color(s.on_primary)
                                                         .child(if is_checked { "✓" } else { "" }),
                                                 )
                                                 .child(
@@ -3433,14 +2977,14 @@ impl AppView {
                                                             div()
                                                                 .text_size(px(12.5))
                                                                 .font_weight(FontWeight::MEDIUM)
-                                                                .text_color(rgb(0xffffff))
+                                                                .text_color(s.on_surface)
                                                                 .truncate()
                                                                 .child(path_display),
                                                         )
                                                         .child(
                                                             div()
                                                                 .text_size(px(11.))
-                                                                .text_color(rgb(0x8e859b))
+                                                                .text_color(s.on_surface_variant)
                                                                 .child(target.label),
                                                         ),
                                                 ),
@@ -3450,9 +2994,9 @@ impl AppView {
                                                 .px_2()
                                                 .py_0p5()
                                                 .rounded_full()
-                                                .bg(rgb(0x2d243c))
+                                                .bg(s.surface_container_high)
                                                 .text_size(px(11.))
-                                                .text_color(rgb(0xcfbcff))
+                                                .text_color(s.primary)
                                                 .font_weight(FontWeight::BOLD)
                                                 .flex_shrink_0()
                                                 .child(size_str),
@@ -3490,9 +3034,9 @@ impl AppView {
                                     )
                                     .child(
                                         Button::new("purge_un", if total_freed_bytes > 0 {
-                                            format!("🧹 Deep Clean & Purge ({})", format_file_size(total_freed_bytes))
+                                            format!("Deep clean and purge ({})", format_file_size(total_freed_bytes))
                                         } else {
-                                            "🧹 Deep Clean & Purge".to_string()
+                                            "Deep clean and purge".to_string()
                                         })
                                         .filled()
                                         .on_click(cx.listener(|this, _, _, cx| {
@@ -3505,25 +3049,204 @@ impl AppView {
     }
 }
 
-fn render_source_badge(source: &AppSource) -> impl IntoElement {
-    let (bg_color, text_color, label) = match source {
-        AppSource::Pacman => (rgb(0x193322), rgb(0xa2e8bd), "Pacman"),
-        AppSource::Aur => (rgb(0x182840), rgb(0xa2cafe), "AUR"),
-        AppSource::AppImage => (rgb(0x351f4c), rgb(0xdfb2fe), "AppImage"),
-        AppSource::Flatpak => (rgb(0x2d2140), rgb(0xd0bdff), "Flatpak"),
-        AppSource::InstallXs => (rgb(0x351f4c), rgb(0xdfb2fe), "InstallXS"),
-        AppSource::Manual | AppSource::Tarball | AppSource::Deb => (rgb(0x262132), rgb(0xcac4d0), "Local"),
-    };
-
+fn render_page_heading(
+    title: impl Into<gpui::SharedString>,
+    subtitle: impl Into<gpui::SharedString>,
+    action: Option<gpui::AnyElement>,
+    s: Scheme,
+) -> impl IntoElement {
     div()
-        .px_3()
+        .w_full()
+        .flex()
+        .flex_wrap()
+        .items_center()
+        .justify_between()
+        .gap_6()
+        .pb_2()
+        .child(
+            div()
+                .flex_1()
+                .min_w_0()
+                .flex()
+                .flex_col()
+                .gap_1()
+                .child(
+                    div()
+                        .font_weight(FontWeight::BOLD)
+                        .text_size(px(24.))
+                        .text_color(s.on_surface)
+                        .child(title.into().to_string()),
+                )
+                .child(
+                    div()
+                        .text_size(px(13.5))
+                        .text_color(s.on_surface_variant)
+                        .child(subtitle.into().to_string()),
+                ),
+        )
+        .when_some(action, |el, action| el.child(action))
+}
+
+fn render_setting_section_title(title: &str, icon: &'static str, s: Scheme) -> impl IntoElement {
+    div()
+        .flex()
+        .items_center()
+        .gap_3()
+        .child(Icon::new(icon).size(px(18.)).color(s.primary))
+        .child(title.to_string())
+}
+
+fn render_source_badge(source: &AppSource, s: Scheme) -> impl IntoElement {
+    let dot = match source {
+        AppSource::Pacman => s.primary,
+        AppSource::Aur => s.tertiary,
+        AppSource::Flatpak => s.secondary,
+        AppSource::AppImage => s.warning,
+        AppSource::InstallXs => s.success,
+        AppSource::Manual | AppSource::Tarball | AppSource::Deb => s.on_surface_variant,
+    };
+    div()
+        .px_2p5()
         .py_1()
-        .rounded_full()
-        .bg(bg_color)
-        .text_color(text_color)
-        .text_size(px(11.))
+        .rounded(px(8.))
+        .bg(s.secondary_container)
+        .flex()
+        .items_center()
+        .gap_1p5()
+        .child(div().size(px(6.)).rounded_full().bg(dot))
+        .child(
+            div()
+                .text_color(s.on_secondary_container)
+                .text_size(px(11.))
+                .font_weight(FontWeight::MEDIUM)
+                .child(source.label()),
+        )
+}
+
+fn render_app_icon(icon_path: Option<&String>, name: &str, s: &Scheme) -> impl IntoElement {
+    render_app_icon_sized(icon_path, name, s, 44.)
+}
+
+fn render_app_icon_sized(
+    icon_path: Option<&String>,
+    name: &str,
+    s: &Scheme,
+    size: f32,
+) -> impl IntoElement {
+    let inner = size - 10.;
+    if let Some(path_str) = icon_path {
+        let p = Path::new(path_str);
+        if p.exists() {
+            let ext = p
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("")
+                .to_lowercase();
+            if ext == "png" || ext == "svg" || ext == "webp" || ext == "jpg" || ext == "jpeg" {
+                return div()
+                    .size(px(size))
+                    .rounded(px(size * 0.27))
+                    .overflow_hidden()
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .bg(s.surface_container_high)
+                    .border_1()
+                    .border_color(s.outline_variant)
+                    .p(px(4.))
+                    .child(img(PathBuf::from(path_str)).size(px(inner)))
+                    .into_any_element();
+            }
+        }
+    }
+
+    let initial = name
+        .chars()
+        .next()
+        .unwrap_or('A')
+        .to_uppercase()
+        .to_string();
+    div()
+        .size(px(size))
+        .rounded(px(size * 0.27))
+        .bg(s.primary_container)
+        .border_1()
+        .border_color(s.outline_variant)
+        .text_color(s.on_primary_container)
+        .flex()
+        .items_center()
+        .justify_center()
         .font_weight(FontWeight::BOLD)
-        .child(label)
+        .text_size(px(size * 0.4))
+        .child(initial)
+        .into_any_element()
+}
+
+// ---------------------------------------------------------------------------
+// Glass surfaces — zeron-style "Plate": a vertical sheen gradient, a hairline
+// rim, a soft drop stack, and an inset top highlight so edges catch light.
+// ---------------------------------------------------------------------------
+
+fn lift(c: Hsla, dl: f32) -> Hsla {
+    Hsla {
+        l: (c.l + dl).clamp(0., 1.),
+        ..c
+    }
+}
+
+fn glass_bg(s: &Scheme) -> gpui::Background {
+    // BoardUI cards are flat surfaces; keep a whisper of sheen only.
+    let _ = s;
+    gpui::linear_gradient(
+        180.,
+        gpui::linear_color_stop(s.surface_container_low, 0.),
+        gpui::linear_color_stop(s.surface_container_low, 1.),
+    )
+}
+
+fn glass_bg_high(s: &Scheme) -> gpui::Background {
+    let _ = s;
+    gpui::linear_gradient(
+        180.,
+        gpui::linear_color_stop(s.surface_container, 0.),
+        gpui::linear_color_stop(s.surface_container, 1.),
+    )
+}
+
+fn glass_shadow(s: &Scheme) -> Vec<gpui::BoxShadow> {
+    let _ = s;
+    vec![
+        gpui::BoxShadow {
+            color: gpui::hsla(0., 0., 0., 0.35),
+            offset: gpui::point(px(0.), px(1.)),
+            blur_radius: px(3.),
+            spread_radius: px(0.),
+        },
+        gpui::BoxShadow {
+            color: gpui::hsla(0., 0., 0., 0.2),
+            offset: gpui::point(px(0.), px(8.)),
+            blur_radius: px(24.),
+            spread_radius: px(-8.),
+        },
+    ]
+}
+
+fn glass_shadow_lift(s: &Scheme) -> Vec<gpui::BoxShadow> {
+    let _ = s;
+    vec![
+        gpui::BoxShadow {
+            color: gpui::hsla(0., 0., 0., 0.4),
+            offset: gpui::point(px(0.), px(2.)),
+            blur_radius: px(6.),
+            spread_radius: px(0.),
+        },
+        gpui::BoxShadow {
+            color: gpui::hsla(0., 0., 0., 0.28),
+            offset: gpui::point(px(0.), px(16.)),
+            blur_radius: px(36.),
+            spread_radius: px(-10.),
+        },
+    ]
 }
 
 fn clean_app_description(app: &InstalledApp) -> String {
@@ -3548,47 +3271,9 @@ fn clean_app_description(app: &InstalledApp) -> String {
             AppSource::AppImage => "Standalone AppImage bundle".to_string(),
             AppSource::Flatpak => "Sandboxed Flatpak application".to_string(),
             AppSource::InstallXs => "Managed by InstallXS".to_string(),
-            AppSource::Manual | AppSource::Tarball | AppSource::Deb => "Locally installed application".to_string(),
-        }
-    }
-}
-
-fn render_app_icon(icon_path: Option<&String>, name: &str, _s: &Scheme) -> impl IntoElement {
-    if let Some(path_str) = icon_path {
-        let p = Path::new(path_str);
-        if p.exists() {
-            let ext = p.extension().and_then(|e| e.to_str()).unwrap_or("").to_lowercase();
-            if ext == "png" || ext == "svg" || ext == "webp" || ext == "jpg" || ext == "jpeg" {
-                return div()
-                    .size(px(44.))
-                    .rounded(px(12.))
-                    .overflow_hidden()
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .bg(rgb(0x282133))
-                    .border_1()
-                    .border_color(rgb(0x3d3250))
-                    .p(px(4.))
-                    .child(img(PathBuf::from(path_str)).size(px(34.)))
-                    .into_any_element();
+            AppSource::Manual | AppSource::Tarball | AppSource::Deb => {
+                "Locally installed application".to_string()
             }
         }
     }
-
-    let initial = name.chars().next().unwrap_or('A').to_uppercase().to_string();
-    div()
-        .size(px(44.))
-        .rounded(px(12.))
-        .bg(rgb(0x2e253c))
-        .border_1()
-        .border_color(rgb(0x45375c))
-        .text_color(rgb(0xcfbcff))
-        .flex()
-        .items_center()
-        .justify_center()
-        .font_weight(FontWeight::BOLD)
-        .text_size(px(18.))
-        .child(initial)
-        .into_any_element()
 }
