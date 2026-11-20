@@ -151,10 +151,9 @@ fn main() {
         .with_assets(gpui_m3::Assets)
         .run(|cx: &mut App| {
             gpui_m3::init(cx);
-            // Default to dark theme for modern Arch Linux setup
-            cx.set_global(gpui_m3::Theme::new(true, None));
+            gpui_m3::Theme::set_scheme(ui::desktop_scheme(true), true, cx);
 
-            let bounds = Bounds::centered(None, size(px(1080.), px(720.)), cx);
+            let bounds = Bounds::centered(None, size(px(1240.), px(800.)), cx);
             let win = cx.open_window(
                 WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(bounds)),
