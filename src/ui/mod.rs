@@ -1,5 +1,5 @@
 use gpui::{
-    div, img, prelude::*, px, rgb, Context, Entity, ExternalPaths, FontWeight, Hsla, IntoElement,
+    div, img, prelude::*, px, rgb, Context, Entity, ExternalPaths, FontWeight, IntoElement,
     ParentElement, Render, Styled, Window,
 };
 use gpui_m3::motion::{self, Spring};
@@ -3186,13 +3186,6 @@ fn render_app_icon_sized(
 // Glass surfaces — zeron-style "Plate": a vertical sheen gradient, a hairline
 // rim, a soft drop stack, and an inset top highlight so edges catch light.
 // ---------------------------------------------------------------------------
-
-fn lift(c: Hsla, dl: f32) -> Hsla {
-    Hsla {
-        l: (c.l + dl).clamp(0., 1.),
-        ..c
-    }
-}
 
 fn glass_bg(s: &Scheme) -> gpui::Background {
     // BoardUI cards are flat surfaces; keep a whisper of sheen only.
