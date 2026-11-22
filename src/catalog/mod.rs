@@ -3,6 +3,7 @@ pub mod icon_resolver;
 pub mod updates;
 pub mod store;
 pub mod backup;
+pub mod release_updater;
 
 use std::collections::{HashMap, HashSet};
 use std::fs;
@@ -133,7 +134,7 @@ fn scan_user_local_desktop_apps(apps: &mut Vec<InstalledApp>, seen_keys: &mut Ha
                     apps.push(InstalledApp {
                         id: format!("local:{}", file_stem),
                         name: entry.name,
-                        version: None,
+                        version: entry.version,
                         comment: entry.comment,
                         source: if is_appimage { AppSource::AppImage } else { AppSource::Manual },
                         exec: entry.exec,
