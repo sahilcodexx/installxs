@@ -10,10 +10,11 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::catalog::{self, backup, store, updates};
+use crate::db;
 use crate::installer::{self, detect_candidate, uninstaller};
 use crate::models::{
-    AppResiduals, AppSource, AvailableUpdate, InstallCandidate, InstallState, InstalledApp,
-    StorePackage,
+    AppReleaseSource, AppResiduals, AppSource, AvailableUpdate, InstallCandidate, InstallState,
+    InstalledApp, StorePackage,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -157,6 +158,12 @@ pub struct AppView {
     pub selected_app_details: Option<InstalledApp>,
     pub dark_mode: bool,
     pub toast: Option<(String, bool)>,
+    // Release Updater & Source State
+    pub update_source_field: Entity<TextField>,
+    pub update_source_input: String,
+    pub editing_update_source: bool,
+    pub checking_app_update: bool,
+    pub app_update_info: Option<AvailableUpdate>,
     // New Feature State
     pub available_updates: Vec<AvailableUpdate>,
     pub is_checking_updates: bool,
@@ -207,6 +214,27 @@ impl AppView {
         )
         .detach();
 
+        let update_source_field = cx.new(|cx| {
+            TextField::new(cx)
+                .placeholder("e.g. imputnet/helium-linux or GitHub/GitLab release URL")
+                .bare()
+        });
+
+        cx.subscribe(
+            &update_source_field,
+            |this: &mut Self, _, event: &TextFieldEvent, cx| match event {
+                TextFieldEvent::Changed(text) => {
+                    this.update_source_input = text.to_string();
+                    cx.notify();
+                }
+                TextFieldEvent::Submitted(_) => {
+                    this.save_current_app_update_source(cx);
+                }
+                _ => {}
+            },
+        )
+        .detach();
+
         let mut view = Self {
             active_tab: initial_tab,
             active_filter: FilterChip::All,
@@ -223,6 +251,11 @@ impl AppView {
             selected_app_details: None,
             dark_mode: true,
             toast: None,
+            update_source_field,
+            update_source_input: String::new(),
+            editing_update_source: false,
+            checking_app_update: false,
+            app_update_info: None,
             available_updates: Vec::new(),
             is_checking_updates: false,
             updating_pkg: None,
@@ -243,6 +276,91 @@ impl AppView {
         self.apps = catalog::scan_all_apps();
         self.downloaded_packages = installer::scan_downloaded_packages();
         self.is_scanning = false;
+        cx.notify();
+    }
+
+    pub fn open_app_details(&mut self, app: InstalledApp, cx: &mut Context<Self>) {
+        self.selected_app_details = Some(app.clone());
+        self.editing_update_source = false;
+        self.app_update_info = None;
+        if let Some(src) = db::get_update_source(&app.id, &app.name) {
+            self.update_source_input = src.repo_or_url.clone();
+            self.check_single_app_update(cx);
+        } else {
+            self.update_source_input = String::new();
+        }
+        cx.notify();
+    }
+
+    pub fn save_current_app_update_source(&mut self, cx: &mut Context<Self>) {
+        let app = match self.selected_app_details.as_ref() {
+            Some(a) => a.clone(),
+            None => return,
+        };
+
+        let input = self.update_source_input.trim();
+        if input.is_empty() {
+            return;
+        }
+
+        if let Some((provider, owner, repo)) = crate::catalog::release_updater::parse_repo_string(input) {
+            let repo_or_url = format!("{}/{}", owner, repo);
+            let src = AppReleaseSource {
+                app_id: app.id.clone(),
+                app_name: app.name.clone(),
+                provider: provider.clone(),
+                repo_or_url: repo_or_url.clone(),
+                asset_keyword: None,
+                current_version: app.version.clone(),
+            };
+            if let Err(e) = db::set_update_source(src) {
+                self.toast = Some((format!("Failed to save source: {}", e), true));
+            } else {
+                self.toast = Some((format!("Linked to {} ({})", repo_or_url, provider.label()), false));
+                self.editing_update_source = false;
+                self.check_single_app_update(cx);
+            }
+        } else {
+            self.toast = Some(("Invalid repository format. Use owner/repo or release URL.".to_string(), true));
+        }
+        cx.notify();
+    }
+
+    pub fn check_single_app_update(&mut self, cx: &mut Context<Self>) {
+        let app = match self.selected_app_details.as_ref() {
+            Some(a) => a.clone(),
+            None => return,
+        };
+
+        if let Some(src) = db::get_update_source(&app.id, &app.name) {
+            self.checking_app_update = true;
+            cx.notify();
+            match crate::catalog::release_updater::check_single_release_source(&src) {
+                Ok(Some(upd)) => {
+                    self.app_update_info = Some(upd);
+                }
+                Ok(None) => {
+                    self.app_update_info = None;
+                    self.toast = Some((format!("'{}' is already up to date!", app.name), false));
+                }
+                Err(err) => {
+                    self.toast = Some((format!("Update check failed: {}", err), true));
+                }
+            }
+            self.checking_app_update = false;
+            cx.notify();
+        }
+    }
+
+    pub fn unlink_update_source(&mut self, cx: &mut Context<Self>) {
+        let app = match self.selected_app_details.as_ref() {
+            Some(a) => a.clone(),
+            None => return,
+        };
+        let _ = db::remove_update_source(&app.id, &app.name);
+        self.app_update_info = None;
+        self.editing_update_source = false;
+        self.toast = Some(("Unlinked release source".to_string(), false));
         cx.notify();
     }
 
@@ -1886,8 +2004,7 @@ impl AppView {
                                     .on_click(cx.listener({
                                         let a = app_for_details;
                                         move |this, _, _, cx| {
-                                            this.selected_app_details = Some(a.clone());
-                                            cx.notify();
+                                            this.open_app_details(a.clone(), cx);
                                         }
                                     }))
                                     .child(
@@ -2016,8 +2133,7 @@ impl AppView {
                         .items_center()
                         .gap_4()
                         .on_click(cx.listener(move |this, _, _, cx| {
-                            this.selected_app_details = Some(details.clone());
-                            cx.notify();
+                            this.open_app_details(details.clone(), cx);
                         }))
                         .child(render_app_icon_sized(app.icon.as_ref(), &app.name, &s, 46.))
                         .child(
@@ -2213,6 +2329,237 @@ impl AppView {
                                 )
                             }),
                     )
+                    // Release & Update Channel Box
+                    .child({
+                        let source_opt = db::get_update_source(&app.id, &app.name);
+                        let is_editing = self.editing_update_source;
+                        let is_checking = self.checking_app_update;
+                        let upd_opt = self.app_update_info.clone();
+
+                        div()
+                            .p_4()
+                            .rounded(px(14.))
+                            .bg(glass_bg_high(&s))
+                            .border_1()
+                            .border_color(s.outline_variant)
+                            .flex()
+                            .flex_col()
+                            .gap_3()
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .justify_between()
+                                    .child(
+                                        div()
+                                            .flex()
+                                            .items_center()
+                                            .gap_2()
+                                            .child(
+                                                Icon::new("files")
+                                                    .size(px(16.))
+                                                    .color(s.primary),
+                                            )
+                                            .child(
+                                                div()
+                                                    .text_size(px(12.5))
+                                                    .font_weight(FontWeight::BOLD)
+                                                    .text_color(s.on_surface)
+                                                    .child("Release & Update Channel"),
+                                            ),
+                                    )
+                                    .when_some(source_opt.as_ref(), |header, src| {
+                                        header.child(
+                                            div()
+                                                .px_2()
+                                                .py_0p5()
+                                                .rounded_full()
+                                                .bg(s.primary_container)
+                                                .text_color(s.on_primary_container)
+                                                .text_size(px(10.5))
+                                                .font_weight(FontWeight::BOLD)
+                                                .child(src.provider.label()),
+                                        )
+                                    }),
+                            )
+                            .when(is_editing || source_opt.is_none(), |b| {
+                                b.child(
+                                    div()
+                                        .flex()
+                                        .flex_col()
+                                        .gap_2()
+                                        .child(
+                                            div()
+                                                .text_size(px(11.5))
+                                                .text_color(s.on_surface_variant)
+                                                .child("Link GitHub or GitLab repo (e.g. imputnet/helium-linux or release URL):"),
+                                        )
+                                        .child(
+                                            div()
+                                                .p_2()
+                                                .rounded(px(8.))
+                                                .bg(s.surface_container_highest)
+                                                .border_1()
+                                                .border_color(s.outline_variant)
+                                                .child(self.update_source_field.clone()),
+                                        )
+                                        .child(
+                                            div()
+                                                .flex()
+                                                .items_center()
+                                                .gap_2()
+                                                .child(
+                                                    Button::new("btn_save_source", "Save & Track")
+                                                        .filled()
+                                                        .size(ButtonSize::Small)
+                                                        .on_click(cx.listener(|this, _, _, cx| {
+                                                            this.save_current_app_update_source(cx);
+                                                        })),
+                                                )
+                                                .when(source_opt.is_some(), |row| {
+                                                    row.child(
+                                                        Button::new("btn_cancel_source", "Cancel")
+                                                            .text()
+                                                            .size(ButtonSize::Small)
+                                                            .on_click(cx.listener(|this, _, _, cx| {
+                                                                this.editing_update_source = false;
+                                                                cx.notify();
+                                                            })),
+                                                    )
+                                                }),
+                                        ),
+                                )
+                            })
+                            .when(!is_editing && source_opt.is_some(), |b| {
+                                let src = source_opt.unwrap();
+                                b.child(
+                                    div()
+                                        .flex()
+                                        .flex_col()
+                                        .gap_2p5()
+                                        .child(
+                                            div()
+                                                .flex()
+                                                .items_center()
+                                                .justify_between()
+                                                .child(
+                                                    div()
+                                                        .flex()
+                                                        .items_center()
+                                                        .gap_1p5()
+                                                        .text_size(px(12.))
+                                                        .text_color(s.on_surface_variant)
+                                                        .child("Repository:")
+                                                        .child(
+                                                            div()
+                                                                .font_weight(FontWeight::SEMIBOLD)
+                                                                .text_color(s.on_surface)
+                                                                .child(src.repo_or_url.clone()),
+                                                        ),
+                                                )
+                                                .child(
+                                                    div()
+                                                        .flex()
+                                                        .items_center()
+                                                        .gap_2()
+                                                        .child(
+                                                            Button::new(
+                                                                "btn_chk_app",
+                                                                if is_checking { "Checking..." } else { "Check Updates" },
+                                                            )
+                                                            .tonal()
+                                                            .size(ButtonSize::Small)
+                                                            .on_click(cx.listener(|this, _, _, cx| {
+                                                                this.check_single_app_update(cx);
+                                                            })),
+                                                        )
+                                                        .child(
+                                                            Button::new("btn_edit_source", "Edit")
+                                                                .tonal()
+                                                                .size(ButtonSize::Small)
+                                                                .on_click(cx.listener({
+                                                                    let repo = src.repo_or_url.clone();
+                                                                    move |this, _, _, cx| {
+                                                                        this.update_source_input = repo.clone();
+                                                                        this.editing_update_source = true;
+                                                                        cx.notify();
+                                                                    }
+                                                                })),
+                                                        )
+                                                        .child(
+                                                            Button::new("btn_unlink_source", "Unlink")
+                                                                .text()
+                                                                .size(ButtonSize::Small)
+                                                                .on_click(cx.listener(|this, _, _, cx| {
+                                                                    this.unlink_update_source(cx);
+                                                                })),
+                                                        ),
+                                                ),
+                                        )
+                                        .when_some(upd_opt, |box_el, upd| {
+                                            let upd_copy = upd.clone();
+                                            box_el.child(
+                                                div()
+                                                    .p_3()
+                                                    .rounded(px(10.))
+                                                    .bg(alpha(s.primary_container, 0.4))
+                                                    .border_1()
+                                                    .border_color(s.primary)
+                                                    .flex()
+                                                    .flex_col()
+                                                    .gap_2()
+                                                    .child(
+                                                        div()
+                                                            .flex()
+                                                            .items_center()
+                                                            .justify_between()
+                                                            .child(
+                                                                div()
+                                                                    .flex()
+                                                                    .items_center()
+                                                                    .gap_2()
+                                                                    .child(
+                                                                        div()
+                                                                            .text_size(px(12.5))
+                                                                            .font_weight(FontWeight::BOLD)
+                                                                            .text_color(s.primary)
+                                                                            .child(format!("New Release Available: v{}", upd.new_version)),
+                                                                    )
+                                                                    .when_some(upd.download_size, |row, sz| {
+                                                                        row.child(
+                                                                            div()
+                                                                                .text_size(px(11.))
+                                                                                .text_color(s.on_surface_variant)
+                                                                                .child(format!("({})", format_file_size(sz))),
+                                                                        )
+                                                                    }),
+                                                            )
+                                                            .child(
+                                                                Button::new(
+                                                                    "btn_update_modal",
+                                                                    format!("Update to {}", upd.new_version),
+                                                                )
+                                                                .filled()
+                                                                .size(ButtonSize::Small)
+                                                                .on_click(cx.listener({
+                                                                    let u = upd_copy;
+                                                                    move |this, _, _, cx| {
+                                                                        this.update_single_package(u.clone(), cx);
+                                                                    }
+                                                                })),
+                                                            ),
+                                                    )
+                                                    .child(
+                                                        div()
+                                                            .text_size(px(10.5))
+                                                            .text_color(s.success)
+                                                            .child("🛡 100% Safe In-Place Update: All bookmarks, cookies, tabs, profiles, and settings in ~/.config are preserved."),
+                                                    ),
+                                            )
+                                        })
+                                )
+                            })
+                    })
                     // Action Buttons Row
                     .child(
                         div()
@@ -2225,6 +2572,8 @@ impl AppView {
                                     .tonal()
                                     .on_click(cx.listener(|this, _, _, cx| {
                                         this.selected_app_details = None;
+                                        this.editing_update_source = false;
+                                        this.app_update_info = None;
                                         cx.notify();
                                     })),
                             )
