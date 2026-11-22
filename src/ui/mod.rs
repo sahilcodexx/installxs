@@ -2694,11 +2694,15 @@ impl AppView {
                         let update_clone = u.clone();
                         let is_this_updating = updating_pkg.as_deref() == Some(&u.package_name);
 
-                        let source_str = match u.source {
-                            AppSource::Pacman => "Pacman",
-                            AppSource::Aur => "AUR",
-                            AppSource::Flatpak => "Flatpak",
-                            _ => "System",
+                        let (source_str, badge_bg, badge_fg) = match u.source {
+                            AppSource::Pacman => ("Pacman", s.secondary_container, s.on_secondary_container),
+                            AppSource::Aur => ("AUR", s.tertiary_container, s.on_tertiary_container),
+                            AppSource::Flatpak => ("Flatpak", s.secondary_container, s.on_secondary_container),
+                            _ => if u.download_url.is_some() {
+                                ("Release", s.primary_container, s.on_primary_container)
+                            } else {
+                                ("System", s.secondary_container, s.on_secondary_container)
+                            },
                         };
 
                         div()
@@ -2723,8 +2727,8 @@ impl AppView {
                                             .px_2p5()
                                             .py_1()
                                             .rounded_full()
-                                            .bg(s.secondary_container)
-                                            .text_color(s.on_secondary_container)
+                                            .bg(badge_bg)
+                                            .text_color(badge_fg)
                                             .text_size(px(11.))
                                             .font_weight(FontWeight::BOLD)
                                             .child(source_str),
@@ -2758,8 +2762,32 @@ impl AppView {
                                                             .text_color(s.success)
                                                             .font_weight(FontWeight::MEDIUM)
                                                             .child(u.new_version.clone()),
-                                                    ),
-                                            ),
+                                                    )
+                                                    .when_some(u.download_size, |row, sz| {
+                                                        row.child(
+                                                            div()
+                                                                .text_size(px(11.5))
+                                                                .text_color(s.on_surface_variant)
+                                                                .child(format!("• {}", format_file_size(sz))),
+                                                        )
+                                                    })
+                                                    .when_some(u.repository.clone(), |row, repo| {
+                                                        row.child(
+                                                            div()
+                                                                .text_size(px(11.5))
+                                                                .text_color(s.primary)
+                                                                .child(format!("({})", repo)),
+                                                        )
+                                                    }),
+                                            )
+                                            .when(u.download_url.is_some(), |col| {
+                                                col.child(
+                                                    div()
+                                                        .text_size(px(11.))
+                                                        .text_color(s.success)
+                                                        .child("✓ Safe in-place release update (preserves all ~/.config settings & profiles)"),
+                                                )
+                                            }),
                                     ),
                             )
                             .child(
