@@ -32,6 +32,16 @@ pub enum NavTab {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FilterChip {
+    All,
+    Pacman,
+    Aur,
+    AppImage,
+    Flatpak,
+    Local,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SortMode {
     Name,
     Source,
@@ -133,6 +143,7 @@ pub fn format_file_size(bytes: u64) -> String {
 
 pub struct AppView {
     pub active_tab: NavTab,
+    pub active_filter: FilterChip,
     pub sort_mode: SortMode,
     pub view_mode: ViewMode,
     pub search_field: Entity<TextField>,
@@ -198,8 +209,9 @@ impl AppView {
 
         let mut view = Self {
             active_tab: initial_tab,
+            active_filter: FilterChip::All,
             sort_mode: SortMode::Name,
-            view_mode: ViewMode::List,
+            view_mode: ViewMode::Grid,
             search_field,
             search_query: String::new(),
             apps: Vec::new(),
@@ -232,6 +244,39 @@ impl AppView {
         self.downloaded_packages = installer::scan_downloaded_packages();
         self.is_scanning = false;
         cx.notify();
+    }
+
+    fn render_filter_chip(
+        &self,
+        id: &'static str,
+        label: &'static str,
+        chip: FilterChip,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let is_active = self.active_filter == chip;
+        div()
+            .id(id)
+            .px_3p5()
+            .py_1p5()
+            .rounded_full()
+            .cursor_pointer()
+            .text_size(px(12.5))
+            .font_weight(if is_active { FontWeight::BOLD } else { FontWeight::MEDIUM })
+            .when(is_active, |el| {
+                el.bg(rgb(0xcfbcff)).text_color(rgb(0x1e1035))
+            })
+            .when(!is_active, |el| {
+                el.bg(rgb(0x201c28))
+                    .border_1()
+                    .border_color(rgb(0x322a3d))
+                    .text_color(rgb(0xcac4d0))
+                    .hover(|h| h.bg(rgb(0x2b2436)).text_color(rgb(0xffffff)))
+            })
+            .on_click(cx.listener(move |this, _, _, cx| {
+                this.active_filter = chip;
+                cx.notify();
+            }))
+            .child(label)
     }
 
     pub fn check_updates(&mut self, cx: &mut Context<Self>) {
@@ -505,6 +550,23 @@ impl AppView {
                 };
                 if !matches_tab {
                     return false;
+                }
+
+                if self.active_tab == NavTab::Applications {
+                    let matches_chip = match self.active_filter {
+                        FilterChip::All => true,
+                        FilterChip::Pacman => app.source == AppSource::Pacman,
+                        FilterChip::Aur => app.source == AppSource::Aur,
+                        FilterChip::AppImage => app.source == AppSource::AppImage,
+                        FilterChip::Flatpak => app.source == AppSource::Flatpak,
+                        FilterChip::Local => matches!(
+                            app.source,
+                            AppSource::Manual | AppSource::Tarball | AppSource::Deb
+                        ),
+                    };
+                    if !matches_chip {
+                        return false;
+                    }
                 }
 
                 if q.is_empty() {
@@ -1519,6 +1581,90 @@ impl AppView {
             .min_w_0()
             .gap_5()
             .pb_10()
+            // 1. Hero Banner (displayed when on Applications tab with empty search query)
+            .when(self.active_tab == NavTab::Applications && self.search_query.is_empty(), |el| {
+                el.child(
+                    div()
+                        .w_full()
+                        .h(px(180.))
+                        .rounded(px(24.))
+                        .bg(rgb(0x251b38))
+                        .border_1()
+                        .border_color(rgb(0x3d2c5c))
+                        .overflow_hidden()
+                        .relative()
+                        .flex()
+                        .items_center()
+                        .justify_between()
+                        // Right Side Arch Logo Wave Art
+                        .child(
+                            div()
+                                .absolute()
+                                .top_0()
+                                .right_0()
+                                .bottom_0()
+                                .w(px(500.))
+                                .overflow_hidden()
+                                .flex()
+                                .items_center()
+                                .justify_end()
+                                .child(
+                                    img(PathBuf::from(format!("{}/assets/hero_wave.png", env!("CARGO_MANIFEST_DIR"))))
+                                        .h_full()
+                                        .w_auto()
+                                )
+                        )
+                        // Left Side Content
+                        .child(
+                            div()
+                                .relative()
+                                .max_w(px(540.))
+                                .py_5()
+                                .pl_8()
+                                .flex()
+                                .flex_col()
+                                .gap_2p5()
+                                .child(
+                                    div()
+                                        .font_weight(FontWeight::BOLD)
+                                        .text_size(px(26.))
+                                        .text_color(rgb(0xffffff))
+                                        .child("Your Arch app hub"),
+                                )
+                                .child(
+                                    div()
+                                        .text_size(px(13.5))
+                                        .text_color(rgb(0xcac4d0))
+                                        .child("Discover, install, and manage applications across Pacman, AUR, AppImage and more."),
+                                )
+                                .child(
+                                    div()
+                                        .pt_1()
+                                        .child(
+                                            div()
+                                                .id("hero_get_started")
+                                                .cursor_pointer()
+                                                .px_5()
+                                                .py_2()
+                                                .rounded_full()
+                                                .bg(rgb(0xffffff))
+                                                .hover(|h| h.bg(rgb(0xe8def8)))
+                                                .text_color(rgb(0x181224))
+                                                .font_weight(FontWeight::BOLD)
+                                                .text_size(px(13.))
+                                                .flex()
+                                                .items_center()
+                                                .gap_2()
+                                                .child("Get started →")
+                                                .on_click(cx.listener(|this, _, _, cx| {
+                                                    this.active_tab = NavTab::DropInstaller;
+                                                    cx.notify();
+                                                })),
+                                        ),
+                                ),
+                        ),
+                )
+            })
             // Section Header: Title, count, and View/Sort Controls
             .child(
                 div()
@@ -1609,6 +1755,21 @@ impl AppView {
                             ),
                     ),
             )
+            // Filter Chips (only when on Applications tab)
+            .when(self.active_tab == NavTab::Applications, |el| {
+                el.child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap_2()
+                        .child(self.render_filter_chip("f_all", "✓ All", FilterChip::All, cx))
+                        .child(self.render_filter_chip("f_pacman", "📦 Pacman", FilterChip::Pacman, cx))
+                        .child(self.render_filter_chip("f_aur", "A AUR", FilterChip::Aur, cx))
+                        .child(self.render_filter_chip("f_appimage", "🚀 AppImage", FilterChip::AppImage, cx))
+                        .child(self.render_filter_chip("f_flatpak", "🧊 Flatpak", FilterChip::Flatpak, cx))
+                        .child(self.render_filter_chip("f_local", "📁 Local", FilterChip::Local, cx)),
+                )
+            })
             // 3. Content Cards or Compact List
             .child(if apps.is_empty() {
                 div()
