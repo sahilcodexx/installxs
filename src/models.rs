@@ -108,6 +108,36 @@ pub struct AvailableUpdate {
     pub source: AppSource,
     pub repository: Option<String>,
     pub download_size: Option<u64>,
+    pub download_url: Option<String>,
+    pub target_app_id: Option<String>,
+    pub release_notes: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ReleaseProvider {
+    GitHub,
+    GitLab,
+    DirectUrl,
+}
+
+impl ReleaseProvider {
+    pub fn label(&self) -> &'static str {
+        match self {
+            ReleaseProvider::GitHub => "GitHub",
+            ReleaseProvider::GitLab => "GitLab",
+            ReleaseProvider::DirectUrl => "Direct Release",
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct AppReleaseSource {
+    pub app_id: String,
+    pub app_name: String,
+    pub provider: ReleaseProvider,
+    pub repo_or_url: String,
+    pub asset_keyword: Option<String>,
+    pub current_version: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
