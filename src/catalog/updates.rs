@@ -18,6 +18,9 @@ pub fn check_system_updates() -> Vec<AvailableUpdate> {
                         source: AppSource::Pacman,
                         repository: Some("Official Arch".to_string()),
                         download_size: None,
+                        download_url: None,
+                        target_app_id: None,
+                        release_notes: None,
                     });
                 }
             }
@@ -35,6 +38,9 @@ pub fn check_system_updates() -> Vec<AvailableUpdate> {
                         source: AppSource::Pacman,
                         repository: Some("Official Arch".to_string()),
                         download_size: None,
+                        download_url: None,
+                        target_app_id: None,
+                        release_notes: None,
                     });
                 }
             }
@@ -58,6 +64,9 @@ pub fn check_system_updates() -> Vec<AvailableUpdate> {
                         source: AppSource::Flatpak,
                         repository: Some("Flathub".to_string()),
                         download_size: None,
+                        download_url: None,
+                        target_app_id: None,
+                        release_notes: None,
                     });
                 }
             }
@@ -78,16 +87,26 @@ pub fn check_system_updates() -> Vec<AvailableUpdate> {
                         source: AppSource::Aur,
                         repository: Some("AUR".to_string()),
                         download_size: None,
+                        download_url: None,
+                        target_app_id: None,
+                        release_notes: None,
                     });
                 }
             }
         }
     }
 
+    // 4. Standalone App Releases (GitHub, GitLab, etc.)
+    let release_updates = crate::catalog::release_updater::check_all_release_sources();
+    updates.extend(release_updates);
+
     updates
 }
 
 pub fn run_package_update(update: &AvailableUpdate) -> Result<(), String> {
+    if update.download_url.is_some() {
+        return crate::catalog::release_updater::execute_release_update(update).map(|_| ());
+    }
     match update.source {
         AppSource::Pacman => {
             let status = Command::new("pkexec")
