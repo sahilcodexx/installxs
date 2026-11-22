@@ -13,6 +13,7 @@ pub struct ParsedDesktopEntry {
     pub categories: Vec<String>,
     pub terminal: bool,
     pub path: PathBuf,
+    pub version: Option<String>,
 }
 
 pub fn parse_desktop_file(path: &Path) -> Option<ParsedDesktopEntry> {
@@ -56,6 +57,14 @@ pub fn parse_desktop_file(path: &Path) -> Option<ParsedDesktopEntry> {
         .map(|c| c.split(';').map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect())
         .unwrap_or_default();
 
+    let version = fields.get("X-AppImage-Version")
+        .cloned()
+        .or_else(|| {
+            fields.get("Version")
+                .filter(|v| v.as_str() != "1.0" && v.as_str() != "1.1" && v.as_str() != "1.5")
+                .cloned()
+        });
+
     Some(ParsedDesktopEntry {
         name,
         exec,
@@ -65,6 +74,7 @@ pub fn parse_desktop_file(path: &Path) -> Option<ParsedDesktopEntry> {
         categories,
         terminal,
         path: path.to_path_buf(),
+        version,
     })
 }
 
