@@ -28,7 +28,8 @@ On Arch Linux, software is spread across many formats and locations:
 6. **Storage & Disk Usage Inspector**: Query and inspect exact on-disk installed sizes across Pacman, Flatpaks, AppImages, and local apps, with "Sort by: Disk Size".
 7. **Machine Migration & Manifest Backup**: Export full machine application portfolios into `~/installxs-backup.json` along with an auto-generated, executable bash restore script (`~/installxs-restore.sh`).
 8. **Native FreeDesktop & MIME Integration**: Registered handler for `.AppImage`, `.tar.gz`, `.deb`, and `.zip` archives.
-9. **Modern Material Design 3 Expressive UI**: Powered by Zed's GPU-accelerated **GPUI** and Google's Material 3 design tokens, with live search and Dark/Light theme switching.
+9. **Standalone Release Updater (App Store Style)**: Track GitHub & GitLab releases directly for standalone software (e.g. Helium Browser). Checks for new stable releases, matches CPU architecture (`x86_64`) and package assets, and executes seamless 1-click in-place updates with zero data loss (all profiles, tabs, cookies, and settings in `~/.config` are 100% preserved).
+10. **Modern Material Design 3 Expressive UI**: Powered by Zed's GPU-accelerated **GPUI** and Google's Material 3 design tokens, with live search, source filter chips, and Dark/Light theme switching.
 
 ---
 
